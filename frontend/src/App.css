@@ -1,0 +1,2590 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
+
+/* ─── Reset & Base ─────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1C1917;
+  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+  color: #F5F0E8;
+}
+
+:root {
+  --sand: #E8DCC8;
+  --sand-deep: #C4B49A;
+  --teal: #0D9488;
+  --teal-deep: #0F766E;
+  --ink: #1C1917;
+  --panel: rgba(28, 25, 23, 0.88);
+  --panel-border: rgba(232, 220, 200, 0.14);
+  --danger: #C2410C;
+  --ok: #16A34A;
+  --warn: #D97706;
+}
+
+/* ─── Custom Scrollbar ─────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ─── Leaflet Map Overrides ────────────────────────────────────────────────── */
+
+.leaflet-container {
+  background: #0F172A;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  /* Always keep the map in LTR context.
+     Leaflet's tile-offset calculations are pixel-based and break when the
+     container inherits direction: rtl from an ancestor element. */
+  direction: ltr !important;
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-control-attribution {
+  background: rgba(8, 15, 26, 0.75) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #334155 !important;
+  border-radius: 8px 0 0 0 !important;
+  font-size: 9px !important;
+  padding: 3px 8px !important;
+  border: none !important;
+}
+
+.leaflet-control-attribution a {
+  color: #475569 !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  color: #94A3B8 !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  font-size: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  transition: background 0.2s, color 0.2s !important;
+}
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background: rgba(37, 99, 235, 0.25) !important;
+  color: #fff !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(8, 15, 26, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+  color: #E2E8F0 !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(8, 15, 26, 0.95) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #64748B !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #E2E8F0 !important;
+}
+
+/* ─── Floating Panels (shared glass mixin) ─────────────────────────────────── */
+/* Background matches the template's rgba(10,14,26,0.72) deep dark glass spec. */
+
+.glass-panel {
+  background: rgba(10, 14, 26, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Cyan ambient glow — pulsing animation for premium CTA buttons */
+.glow-cyan {
+  animation: cyanGlowPulse 2.4s ease-in-out infinite;
+}
+
+/* ─── Floating Sidebar ─────────────────────────────────────────────────────── */
+
+.floating-sidebar {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1050;
+  width: 320px;
+  max-width: 320px;
+  /* Fixed height — not max-height — so flex:1 children get a real pixel
+     height and can create their own internal scroll containers.  Without
+     this the inner meeting/navigation panels have no height anchor and
+     their overflow-y:auto is ignored, pushing content below the fold. */
+  height: calc(100vh - 40px);
+  border-radius: 16px;
+  overflow: hidden;   /* inner panels own their scroll; outer must not */
+  /* smooth appearance on load */
+  animation: sidebarFadeIn 0.4s ease forwards;
+  /* Mobile transition — used when toggling the bottom sheet open/closed */
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sidebarFadeIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* RTL: sidebar floats to the right, slide in from right */
+[dir="rtl"] .floating-sidebar {
+  left: auto;
+  right: 20px;
+  animation-name: sidebarFadeInRTL;
+}
+
+@keyframes sidebarFadeInRTL {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Responsive: tablet / mobile ──────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .floating-sidebar {
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 62vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    transform: translateY(0);
+    /* Suppress the desktop slide-in-from-left keyframe; the bottom-sheet
+       slide-up is handled entirely by the CSS transition on transform. */
+    animation: none !important;
+    /* Expose the bottom safe-area inset (notch / home-bar) so the last
+       row of the sidebar never sits under the iOS home indicator. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Collapsed state — only the drag-handle peek strip (52px) remains visible */
+  .floating-sidebar.sidebar-collapsed {
+    transform: translateY(calc(100% - 52px));
+  }
+
+  [dir="rtl"] .floating-sidebar {
+    left: 0 !important;
+    right: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .floating-sidebar {
+    height: 68vh !important;
+  }
+}
+
+/* ─── Mobile sidebar drag handle ───────────────────────────────────────────── */
+
+.sidebar-pull-handle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar-pull-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 28px;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .sidebar-pull-handle::before {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  .sidebar-pull-handle:hover::before,
+  .sidebar-pull-handle:active::before {
+    background: rgba(148, 163, 184, 0.65);
+  }
+}
+
+/* ─── Mobile sidebar toggle FAB ─────────────────────────────────────────────── */
+
+.mobile-sidebar-fab {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-sidebar-fab {
+    display: flex;
+    position: fixed;
+    /* 60 px clears the 52 px collapsed-sheet handle with an 8 px breathing gap,
+       so the FAB never visually blends into the pull-handle strip. */
+    bottom: 60px;
+    right: 20px;
+    /* Stay tappable above the bottom sheet (z-index 9998) and below the top
+       search panel (z-index 9999).  The FAB sits in the bottom-right corner,
+       so layering vs. the top panel is purely defensive. */
+    z-index: 10000;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(8, 15, 26, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(37, 99, 235, 0.55);
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.30), 0 2px 12px rgba(0, 0, 0, 0.50);
+    color: #60A5FA;
+    font-size: 22px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+    outline: none;
+  }
+
+  .mobile-sidebar-fab:hover,
+  .mobile-sidebar-fab:active {
+    transform: scale(1.12);
+    box-shadow: 0 6px 28px rgba(37, 99, 235, 0.50), 0 2px 14px rgba(0, 0, 0, 0.60);
+    border-color: rgba(59, 130, 246, 0.80);
+  }
+
+  [dir="rtl"] .mobile-sidebar-fab {
+    right: auto;
+    left: 20px;
+  }
+}
+
+/* ─── GPS Error Toast (mobile & desktop) ────────────────────────────────────── */
+
+@keyframes gpsToastSlideIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes gpsToastSlideOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+}
+
+.gps-error-toast {
+  animation: gpsToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.gps-error-toast.toast-dismissing {
+  animation: gpsToastSlideOut 0.3s ease forwards;
+}
+
+/* ─── Autocomplete Spinner ──────────────────────────────────────────────────── */
+
+@keyframes spin {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to   { transform: translateY(-50%) rotate(360deg); }
+}
+
+@keyframes spinCenter {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── Floating Notification Animations ─────────────────────────────────────── */
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Top-center toast: parent centers with translateX(-50%); one toast at a time in TrafficMap */
+@keyframes slideInFromTopStack {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* ─── Button Hover Animations ──────────────────────────────────────────────── */
+
+.btn-animated {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease !important;
+}
+
+.btn-animated:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+}
+
+.btn-animated:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
+/* ─── Route Card Hover ──────────────────────────────────────────────────────── */
+
+.route-option-row {
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.route-option-row:hover {
+  transform: translateX(2px);
+}
+
+/* RTL route card hover shifts right instead of left */
+[dir="rtl"] .route-option-row:hover {
+  transform: translateX(-2px);
+}
+
+/* ─── Sidebar search inputs ─────────────────────────────────────────────────── */
+
+.sidebar-input {
+  transition: all 0.3s ease !important;
+}
+
+.sidebar-input:focus {
+  outline: none;
+}
+
+/* ─── Dropdown portal smooth appear ────────────────────────────────────────── */
+
+.search-dropdown-portal {
+  animation: dropdownAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dropdownAppear {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Smart Departure Card entrance (bouncy scale from center) ─────────────── */
+
+@keyframes smartCardAppear {
+  0%   { opacity: 0; transform: translateY(-50%) scale(0.85); }
+  60%  { opacity: 1; transform: translateY(-50%) scale(1.03); }
+  100% { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+/* ─── Simulation button pulse dot ──────────────────────────────────────────── */
+
+@keyframes simulationPulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.4); }
+}
+
+/* ─── Smart Alert Manager animations ───────────────────────────────────────── */
+
+/*
+ * cameraAlertFlash — used by CameraProximityBanner to flash the outer ring
+ * every ~0.7 s, making the alert impossible to miss while driving.
+ * Two variants:
+ *   .camera-alert-flash-speed  → red/amber (speed cameras)
+ *   .camera-alert-flash-belt   → amber/orange (belt / mobile cameras)
+ */
+/*
+ * SaherAlertBadge — premium top-of-screen radar badge.
+ *   saherBadgeExit  → graceful fade + lift when leaving the 400 m zone.
+ *   saherBadgePulse → subtle breathing glow while the badge is active.
+ */
+@keyframes saherBadgeExit {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px);
+  }
+}
+
+@keyframes saherBadgePulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(239, 68, 68, 0.18),
+      0 12px 36px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(239, 68, 68, 0.32),
+      0 14px 40px rgba(0, 0, 0, 0.60),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  }
+}
+
+@keyframes cameraAlertFlashSpeed {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(239, 68, 68, 0.22),
+      0 8px 28px rgba(0, 0, 0, 0.70),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(239, 68, 68, 0.65);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(239, 68, 68, 0.55),
+      0 8px 36px rgba(0, 0, 0, 0.80),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    border-color: rgba(239, 68, 68, 1);
+  }
+}
+
+@keyframes cameraAlertFlashBelt {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(245, 158, 11, 0.22),
+      0 8px 28px rgba(0, 0, 0, 0.70),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(245, 158, 11, 0.65);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(245, 158, 11, 0.55),
+      0 8px 36px rgba(0, 0, 0, 0.80),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    border-color: rgba(245, 158, 11, 1);
+  }
+}
+
+/* Speed monitor widget pulse when exceeding the limit */
+@keyframes speedWarningPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(239,68,68,0.3), 0 4px 16px rgba(0,0,0,0.4); }
+  50%       { box-shadow: 0 0 36px rgba(239,68,68,0.55), 0 4px 16px rgba(0,0,0,0.4); }
+}
+
+/* Smooth fade-out for auto-dismissed alerts */
+@keyframes alertFadeOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
+.alert-dismissing {
+  animation: alertFadeOut 0.35s ease forwards;
+  pointer-events: none;
+}
+
+/* ─── Smart Departure card glassmorphism base ──────────────────────────────── */
+
+.smart-departure-card {
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+/* ─── Route comparison numbered badge ─────────────────────────────────────── */
+
+.route-number-badge {
+  transition: filter 0.2s ease;
+}
+
+/* ─── Premium Cyan Glow Keyframe ────────────────────────────────────────────── */
+
+@keyframes cyanGlowPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 18px rgba(0,200,255,0.20),
+      0 4px 20px rgba(0,0,0,0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(0,220,255,0.38),
+      0 4px 20px rgba(0,0,0,0.55);
+  }
+}
+
+/* ─── Button active press feedback ─────────────────────────────────────────── */
+
+.btn-animated:active:not(:disabled) {
+  transform: scale(0.97) !important;
+}
+
+/* ─── Mobile Touch: suppress translateY hover transforms (iOS double-tap fix) ──
+ *
+ * On touch screens (:hover fires on the FIRST tap, not on pointer proximity).
+ * Any `transform: translateY/translateX` applied via :hover shifts the element
+ * away from the touch point, so the synthesised `click` event lands on the
+ * vacated pixel and is swallowed — requiring a second tap.
+ *
+ * `@media (hover: none) and (pointer: coarse)` precisely targets touch-only
+ * devices (phones / tablets) while leaving desktop hover animations untouched.
+ * `pointer-events: auto` and `touch-action: manipulation` are already set on
+ * the button elements themselves; these rules only neutralise the translate.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  /* Primary animated button — used on most action buttons throughout the app */
+  .btn-animated:hover:not(:disabled) {
+    transform: none !important;
+  }
+
+  /* Mobile top-panel "اقتراح الطريق" CTA (portaled to body) */
+  .mobile-top-search-panel .mobile-top-cta-primary:hover,
+  .mobile-top-search-panel .mobile-top-cta-primary:focus-visible {
+    transform: none !important;
+    /* Keep visual feedback — only the position-changing translate is removed */
+    background: linear-gradient(135deg, #1E40AF, #2563EB) !important;
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.60) !important;
+  }
+
+  /* Route comparison card row — translateX causes the same double-tap issue */
+  .route-option-row:hover {
+    transform: none !important;
+  }
+
+  [dir="rtl"] .route-option-row:hover {
+    transform: none !important;
+  }
+
+  /* Mobile sidebar FAB — keep the scale (center-origin, touch-safe) but strip
+   * any accidental translateY that earlier versions may have introduced */
+  .mobile-sidebar-fab:hover,
+  .mobile-sidebar-fab:active {
+    transform: scale(1.12);
+  }
+
+  /* Swap icon: keep the rotation (purely decorative, no position shift) */
+  .dest-swap-btn:hover,
+  .dest-swap-btn:focus-visible {
+    transform: rotate(180deg);
+  }
+}
+
+/* ─── Leaflet zoom control — cyan accent on hover ───────────────────────────── */
+
+.leaflet-control-zoom-in:hover,
+.leaflet-control-zoom-out:hover {
+  background: rgba(0, 180, 255, 0.18) !important;
+  color: #00d4ff !important;
+}
+
+/* ─── Navigation Lifecycle Animations ──────────────────────────────────────── */
+
+/*
+ * navPulse — used by NavigationControls for the three status indicator dots:
+ *   • Preview Mode badge (1.8s)
+ *   • "جارٍ التنقل" active-navigation dot (1.6s)
+ *   • "تتبع مباشر · LIVE GPS" badge dot (1.4s)
+ */
+@keyframes navPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.6);
+  }
+}
+
+/*
+ * .nav-stealth-marker — outer Leaflet DivIcon wrapper for the navigation chevron.
+ *
+ * CRITICAL: This div is the element that Leaflet positions using
+ * `transform: translate3d(x, y, 0)`.  We must NEVER apply a CSS `transform`
+ * animation here — doing so completely overrides Leaflet's positioning
+ * transform and causes the marker to disappear (renders at 0,0 or off-screen).
+ *
+ * Only `background` / `border` / `overflow` resets belong on this element.
+ * All visual effects (glow, rotation) live on the inner .__rot child.
+ */
+.nav-stealth-marker {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+/*
+ * .nav-stealth-marker__rot — rotation + glow container.
+ *
+ * Owns the heading-driven `transform: rotate(Xdeg)` (applied inline by
+ * createNavigationChevronIcon) and the breathing glow animation.
+ *
+ * The glow animation ONLY animates `filter` — never `transform` — so it
+ * cannot interfere with either Leaflet's outer positioning transform or the
+ * inline heading rotation on this element.
+ */
+.nav-stealth-marker__rot {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 50% 50%;
+  /* Companion to the rAF position tween in AnimatedNavigationMarker:
+     the chevron's heading (inline `transform: rotate()`) is updated whenever
+     the GPS callback computes a new bearing.  A 400 ms linear transition
+     glides between successive bearings instead of snapping, matching the
+     Google-Maps / Waze feel.  Linear (not ease) is intentional — heading
+     rotation is a continuous physical quantity, so easing would visually
+     mis-align with the marker's translation tween.
+
+     SAFETY: this transition only animates the INNER `.__rot` element.  The
+     outer `.nav-stealth-marker` div is owned exclusively by Leaflet for
+     translate3d positioning and MUST NEVER receive a transform transition. */
+  transition: transform 0.4s linear;
+  will-change: filter, transform;
+  animation: chevronGlowPulse 2s ease-in-out infinite;
+}
+
+/*
+ * chevronGlowPulse — filter-ONLY breathing halo.
+ *
+ * Previously included `transform: scale()` which conflicted with both
+ * Leaflet's outer positioning transform and the inline `rotate()` on .__rot.
+ * Removed entirely — the blue drop-shadow glow is sufficient for the
+ * "premium alive" feel without any transform side-effects.
+ */
+@keyframes chevronGlowPulse {
+  0%, 100% {
+    filter:
+      drop-shadow(0 0 6px rgba(30, 58, 138, 0.60))
+      drop-shadow(0 0 2px rgba(203, 213, 225, 0.40));
+  }
+  50% {
+    filter:
+      drop-shadow(0 0 16px rgba(59, 130, 246, 0.90))
+      drop-shadow(0 0 5px rgba(203, 213, 225, 0.60));
+  }
+}
+
+/*
+ * .nav-rerouting-indicator__spinner — small glassy spinner attached to the
+ * "جارِ إعادة حساب المسار..." indicator rendered from TrafficMap.js while a
+ * silent auto-reroute is in flight.
+ */
+.nav-rerouting-indicator__spinner {
+  animation: navReroutingSpin 0.9s linear infinite;
+}
+
+@keyframes navReroutingSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Metro Station Markers (Park & Ride) ─────────────────────────────────── */
+
+.metro-station-marker {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2.5px solid #6366F1;
+  border-radius: 50%;
+  font-size: 19px;
+  line-height: 1;
+  box-shadow:
+    0 3px 12px rgba(99, 102, 241, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.20);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metro-station-marker:hover {
+  transform: scale(1.15);
+  box-shadow:
+    0 6px 20px rgba(99, 102, 241, 0.50),
+    0 2px 6px rgba(0, 0, 0, 0.30);
+}
+
+/* Popup wrapper override so Leaflet's container matches our dark theme */
+.metro-popup-wrapper .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+}
+
+.metro-popup-wrapper .leaflet-popup-content {
+  margin: 0 !important;
+}
+
+.metro-station-popup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  direction: rtl;
+  font-family: 'Segoe UI', Arial, Tahoma, sans-serif;
+}
+
+.metro-station-popup__icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.metro-station-popup__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #E2E8F0;
+  white-space: nowrap;
+}
+
+/* Meeting-point centroid marker gentle pulse */
+@keyframes meetingPulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 10px rgba(139,92,246,0.90)) drop-shadow(0 2px 6px rgba(0,0,0,0.60)); }
+  50%       { transform: scale(1.18); filter: drop-shadow(0 0 18px rgba(139,92,246,1.00)) drop-shadow(0 4px 10px rgba(0,0,0,0.50)); }
+}
+
+/* ─── TomTom Traffic Flow tile — muted pastel palette ──────────────────────── */
+/*
+ * TomTom "relative-delay" tiles use vivid green/yellow/orange/red.
+ * A CSS filter desaturates and dims them so they read as soft lane indicators
+ * rather than harsh overlays, keeping street labels visible — especially in
+ * Dark Mode.  The opacity is already halved on the TileLayer prop (0.50);
+ * this filter handles the hue softening.
+ */
+.tomtom-traffic-flow img {
+  filter: saturate(0.55) brightness(0.82);
+}
+
+/* ─── Mobile Layout: floating element repositioning ────────────────────────── */
+/*
+ * On mobile the sidebar becomes a bottom sheet. Fixed/absolute widgets that
+ * were designed for a desktop left-column layout must be moved to the top of
+ * the visible map area (above the bottom sheet) so they are always reachable.
+ *
+ * Z-index guide (ascending):
+ *   map tiles          ← Leaflet default (~100–400)
+ *   map-legend         ← 1000  (hidden on mobile)
+ *   floating-sidebar   ← 1050
+ *   nav controls panel ← 1200
+ *   locate-me-btn      ← 9999  (mobile: top-left)
+ *   copilot-fab-wrapper← 9999  (mobile: top-left, below locate-me)
+ *   mobile-sidebar-fab ← 9998  (mobile: bottom-right, above handle)
+ *   search dropdown    ← 99999 (portal — always on top)
+ */
+
+@media (max-width: 768px) {
+  /* ── LocateMeButton: move from bottom-left into the visible map area ──── */
+  .locate-me-btn {
+    bottom: auto !important;
+    top: 16px !important;
+    left: 16px !important;
+  }
+
+  /* ── AI Copilot FAB wrapper: stack below LocateMeButton at top-left ─────
+   * Both `.locate-me-btn` (GPS, 50×50) and `.copilot-fab-wrapper` (mic, 50×50)
+   * share the SAME `left` value here so they form a perfectly aligned
+   * vertical column on the left edge of the map.  Earlier the copilot FAB
+   * sat at `left: 10px` while the GPS button sat at `left: 16px`, which
+   * shifted the mic horizontally and produced the misaligned-button bug. */
+  .copilot-fab-wrapper {
+    bottom: auto !important;
+    top: 78px !important;
+    left: 16px !important;
+  }
+
+  /* ── AI Copilot panel: anchor from top so it opens downward in map area ─ */
+  .copilot-panel {
+    bottom: auto !important;
+    top: 138px !important;
+    left: 16px !important;
+    /* Limit height so the panel stays within the visible map portion even
+       when the bottom sheet is fully expanded (≈ top 38 % of screen). */
+    max-height: min(42vh, 260px) !important;
+  }
+
+  /* ── Traffic-level legend: hidden on mobile to declutter the map ──────── */
+  .map-legend {
+    display: none !important;
+  }
+
+  /* ── Prevent iOS viewport zoom when focusing search / input fields ──────
+   * Safari auto-zooms if the focused input has font-size < 16 px. The
+   * sidebar uses fontSize: 13 in inline styles (correct on desktop), but on
+   * mobile we must override to 16 px to keep the viewport stable. Using
+   * !important because the values are set via React inline styles. */
+  .floating-sidebar input,
+  .floating-sidebar textarea,
+  .floating-sidebar select {
+    font-size: 16px !important;
+  }
+
+  /* ── Touch targets: suppress 300 ms double-tap delay on all buttons ───── */
+  button,
+  [role="button"],
+  .sidebar-pull-handle {
+    touch-action: manipulation;
+  }
+
+  /* ── Search dropdown portal: cap height so it never overflows the map ── */
+  .search-dropdown-portal {
+    max-height: min(55vh, 320px) !important;
+  }
+
+  /* ── Traffic flow tile: further reduce opacity on small screens so road
+   * labels stay legible on compact displays. ────────────────────────────── */
+  .tomtom-traffic-flow img {
+    opacity: 0.75 !important; /* scales down the per-tile opacity on mobile */
+  }
+}
+
+/* =======================================================================
+ * ▼▼▼  Mobile-only layout overhaul (≤ 768px)  ▼▼▼
+ *
+ * The rules below implement the 5-point mobile redesign:
+ *   1. Traffic Analytics panel  → compact card docked bottom-left
+ *   2. Bottom navigation panel  → single cohesive row: exit / recenter / live
+ *   3. Top guidance banner      → compact, larger-hit voice button
+ *   4. Speed gauge              → shrunk to a small HUD pill
+ *   5. General clutter          → suppress floating FAB copies during nav
+ *
+ * All rules are scoped inside (max-width: 768px) so desktop is unaffected.
+ * `!important` is used sparingly but deliberately — the project's panels are
+ * built with inline React style objects that would otherwise win the cascade.
+ * ======================================================================= */
+
+@media (max-width: 768px) {
+
+  /* ── 1. Traffic Analytics panel — compact top-left card ────────────────
+   *
+   * Anchored to the top-left of the viewport per the field-test feedback
+   * ("the analytics panel was interfering with bottom-sheet controls
+   * during driving").  Sits BELOW the floating top search panel
+   * (`mobile-top-search-panel` is ~210 px tall in the idle / preview
+   * phase) so the two surfaces never overlap, and BELOW the active-nav
+   * banner during navigation (the banner is ~84 px tall, so the
+   * 230 px offset still clears it).
+   *
+   * `z-index: 9998` keeps the panel above the map and the bottom sheet
+   * (also 9998 — same plane, so it stacks naturally without fighting
+   * the search inputs at z-index 9999).
+   *
+   * The dashboard ships in `collapsed` mode by default on mobile (see
+   * AnalyticsDashboard.js → `useIsMobile`), so by default it is just a
+   * 42 px header chip — non-intrusive, with the .locate-me-btn / copilot
+   * FABs placed BELOW it (their offsets are bumped down 60 px in the
+   * Mobile Layout Decoupling block to make room).  An expanded panel
+   * temporarily covers those FABs; tapping the chevron collapses it
+   * again, restoring access. */
+  .analytics-dashboard {
+    /* Search panel was ~210 px tall; the compact redesign reduced it to
+       ~150 px.  We sit the analytics chip 188 px from the safe-area top so
+       there is a small visual gap below the card without leaving a dead
+       band.  Stays clear of the active-nav banner (~84 px tall) too. */
+    top: calc(env(safe-area-inset-top, 0px) + 188px) !important;
+    bottom: auto !important;
+    left: 15px !important;
+    right: auto !important;
+    width: 184px !important;
+    border-radius: 14px !important;
+    z-index: 9998 !important;
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset !important;
+  }
+
+  [dir="rtl"] .analytics-dashboard {
+    left: 15px !important;
+    right: auto !important;
+  }
+
+  /* Header — smaller padding and tighter typography */
+  .analytics-dashboard > div:first-child {
+    padding: 8px 10px !important;
+  }
+
+  .analytics-dashboard > div:first-child span:first-child {
+    font-size: 13px !important;
+  }
+
+  .analytics-dashboard > div:first-child > div span:nth-child(2) {
+    font-size: 9px !important;
+    letter-spacing: 0.9px !important;
+  }
+
+  /* Body (expanded state) — tighter gaps and smaller type everywhere */
+  .analytics-dashboard > div:nth-child(2) {
+    padding: 10px 12px !important;
+    gap: 10px !important;
+  }
+
+  /* Shrink the sparkline svg so the chart + labels fit the narrower card */
+  .analytics-dashboard svg[aria-label="Traffic forecast chart"] {
+    width: 100% !important;
+    max-width: 160px !important;
+    height: 56px !important;
+  }
+
+  /* Hide the verbose 5-row level list — keep only the chart + header */
+  .analytics-dashboard > div:nth-child(2) > div:nth-child(3) {
+    display: none !important;
+  }
+
+  /* Compact current-level badge */
+  .analytics-dashboard > div:nth-child(2) > div:first-child span:last-child {
+    padding: 3px 8px !important;
+    font-size: 9px !important;
+  }
+
+  /* Slim confidence bar */
+  .analytics-dashboard > div:nth-child(2) > div:last-child {
+    margin-top: 2px;
+  }
+
+
+  /* ── 2. Bottom navigation panel — one cohesive action row ──────────────── */
+
+  .nav-controls-panel {
+    max-width: 100% !important;
+    padding: 14px 14px 16px !important;
+    gap: 10px !important;
+    border-radius: 20px 20px 0 0 !important;
+    /* Mobile UI overlay fix: constrain the panel height so the route
+     * preview / "انطلق" / "إلغاء المسار" view never eats the whole
+     * screen, allow internal scrolling so all controls remain reachable,
+     * and respect the iOS home-indicator safe area so the last button
+     * never sits underneath the home bar.  These three rules together
+     * resolve the field-test bug where the bottom sheet covered the map
+     * and the user couldn't see options underneath. */
+    max-height: 50vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Tighter cap in PREVIEW mode (route planned, not yet driving) — this is
+   * the state the user reported as worst, where the panel was tall enough
+   * to obscure the map.  Active-navigation state already trims down to a
+   * single action row, so it doesn't need the extra constraint. */
+  .nav-controls-dock[data-is-navigating="0"] .nav-controls-panel {
+    max-height: 45vh !important;
+  }
+
+  /* During active navigation the three action buttons (Exit / Re-center /
+   * Live-tracking) need to sit on a single row.  `display: contents` hoists
+   * the status-row children into the parent so we can reorder everything
+   * with flex `order` without restructuring the React DOM. */
+  .active-nav-container {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .active-nav-status-row {
+    display: contents;
+  }
+
+  /* "جارٍ التنقل" pulsing label — full-width header row */
+  .active-nav-status-row > div:first-child {
+    order: 0;
+    flex: 1 0 100%;
+    justify-content: center;
+    display: flex;
+  }
+
+  /* Live-tracking active badge: on its own row above the action buttons */
+  .nav-live-tracking-badge {
+    order: 1;
+    flex: 0 1 auto;
+    margin: 0 auto;
+  }
+
+  /* Shared action-button sizing — the three buttons share one row */
+  .nav-exit-btn,
+  .nav-recenter-inline-btn,
+  .nav-live-tracking-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    padding: 10px 8px !important;
+    font-size: 12.5px !important;
+    border-radius: 14px !important;
+    letter-spacing: 0.2px !important;
+    gap: 6px !important;
+  }
+
+  /* Exit button keeps its red identity but is no longer a huge standalone pill */
+  .nav-exit-btn {
+    order: 2;
+  }
+
+  /* Mobile-only in-panel Re-center button: toggle from `display: none` to flex
+   * and inherit the shared action-button sizing above. */
+  .nav-recenter-inline-btn {
+    display: flex !important;
+    order: 3;
+  }
+
+  /* Live-tracking manual-enable button mirrors the others */
+  .nav-live-tracking-btn {
+    order: 4;
+  }
+
+  /* Floating re-center FAB is redundant on mobile (we render it inline above),
+   * so suppress it entirely — desktop rule below is unchanged. */
+  .recenter-fab {
+    display: none !important;
+  }
+
+
+  /* ── 3. Top guidance banner — compact on mobile ────────────────────────── */
+
+  .nav-banner-card {
+    padding: 10px 12px 10px !important;
+    gap: 10px !important;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .nav-banner-icon {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 22px !important;
+    border-radius: 12px !important;
+  }
+
+  .nav-banner-instruction {
+    font-size: 14.5px !important;
+    line-height: 1.3 !important;
+  }
+
+  .nav-banner-voice-btn {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 17px !important;
+    border-radius: 10px !important;
+  }
+
+
+  /* ── 4. Speed gauge — shrunk to a small HUD pill next to the banner ───── */
+  /*
+   * On desktop the gauge is a large cockpit-style pill.  On mobile we keep
+   * the component mounted (so alerts & behaviour stay identical) but collapse
+   * its footprint by ~55% and anchor it just below the top guidance banner so
+   * it reads as the "speed bubble" that completes the top-banner HUD without
+   * crowding the instruction text.  When there is no active route the gauge
+   * is not rendered at all, so the anchor never produces a stray empty pill.
+   */
+  .speed-gauge-root {
+    top: calc(72px + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    right: 10px !important;
+    transform: scale(0.62);
+    transform-origin: top right;
+  }
+
+  [dir="rtl"] .speed-gauge-root {
+    right: 10px !important;
+    left: auto !important;
+  }
+
+  /* Hide the redundant "⚡ تجاوز السرعة" pulse label on mobile — the pill's
+   * own red-flip handles the overspeed cue without extra vertical space. */
+  .speed-gauge-root > div:last-child:not(.speed-gauge-pill) {
+    display: none !important;
+  }
+
+
+  /* ── 5. Clutter reduction ──────────────────────────────────────────────── */
+  /* Already handled outside this block:
+   *   - .map-legend         display:none
+   *   - .tomtom-traffic-flow lowered opacity
+   *   - .locate-me-btn      repositioned top-left
+   *   - .copilot-fab-wrapper repositioned
+   */
+}
+
+/* =======================================================================
+ * ▼▼▼  Mobile Layout Decoupling Overhaul (≤ 768px)  ▼▼▼
+ *
+ * Transforms the existing `floating-sidebar` bottom sheet into the
+ * Google-Maps-style sleek action panel from the redesign brief.  Goals:
+ *
+ *   1.  Promote the `Destination` card (FROM / TO + swap) out of the
+ *       bottom-sheet flow and pin it as a floating pill stack at the top
+ *       of the viewport (always reachable, never blocks the map).
+ *   2.  Suppress the noisy mid-tier cards (route comparison / route info /
+ *       smart analytics / metro alt / alerts) so the bottom sheet reads as
+ *       a sleek 3-row action panel.
+ *   3.  Reorder the surviving rows via flex `order`:
+ *
+ *         ┌──────────────────────────────┐
+ *         │ Traffic-prediction summary   │  ← Row 1
+ *         │ "اقترح الطريق" main CTA       │  ← Row 2
+ *         │ التنقل / نقطة التجمع tabs    │  ← Row 3 (secondary actions)
+ *         └──────────────────────────────┘
+ *
+ * Implementation notes:
+ *   - `display: contents` on `.sidebar-main-content` flattens its child
+ *     cards into the sidebar's flex column so they participate in the
+ *     same `order` cascade as the pull-handle and the tab toggle.
+ *   - All colors, gradients and panel backgrounds are inherited from the
+ *     existing dark inline-style tokens — only positioning, ordering and
+ *     visibility change here.  The blue accent on focused inputs and the
+ *     gradient on the "اقترح الطريق" / tab buttons is left untouched.
+ *   - Desktop (>768px) is completely unaffected because every rule below
+ *     is scoped inside `@media (max-width: 768px)`.
+ * ======================================================================= */
+
+@media (max-width: 768px) {
+
+  /* a) ── Bottom sheet container ─────────────────────────────────────────
+   *    Lower height, sleek top-rounded corners.  The earlier rule pinned
+   *    this to 62vh; the redesign drops it to a height-driven panel that
+   *    hugs its content on the navigation tab.  The meeting tab can be
+   *    taller, so we keep `overflow-y: auto` to let the participant list
+   *    scroll within the sheet without escaping its bounds. */
+  .floating-sidebar {
+    height: auto !important;
+    max-height: min(52vh, 420px) !important;
+    border-radius: 18px 18px 0 0 !important;
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    gap: 10px;
+    padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* The collapsed peek-state is preserved (drag-handle remains tappable). */
+  .floating-sidebar.sidebar-collapsed {
+    transform: translateY(calc(100% - 52px)) !important;
+  }
+
+  /* b) ── Sidebar header: hidden on mobile.  The bottom action panel does
+   *       not need a brand strip — the floating-top inputs and bottom
+   *       sheet together already establish the app's identity. */
+  .floating-sidebar > .sidebar-header-block {
+    display: none !important;
+  }
+
+  /* c) ── Flatten the active-tab wrapper so its child cards become flex
+   *       items of the sidebar and can be `order`-shuffled below. */
+  .floating-sidebar > .sidebar-main-content {
+    display: contents;
+  }
+
+  /* d) ── Default-hide every flattened card.  We only re-enable the rows
+   *       that compose the sleek panel — everything else (route info,
+   *       smart analytics, route comparison, alerts, metro alt …) is
+   *       suppressed on mobile but remains untouched on desktop. */
+  .floating-sidebar > .sidebar-main-content > * {
+    display: none !important;
+  }
+
+  /* e) ── Row 1: Traffic prediction summary (AI Prediction).
+   *       The product brief mandates that the FULL prediction card stays
+   *       visible on mobile in the idle bottom sheet — gauge, level
+   *       badge, departure-advice line AND the "Smart Departure"
+   *       (best time to leave) button.  We only suppress the SectionHeader
+   *       to recover a few px of vertical space; every other child is
+   *       intentionally left visible.
+   *
+   *       `margin-top: 0` (down from 4 px) is intentional — the
+   *       التنقل/نقطة التجمع tab row sits immediately above this card
+   *       and the design brief requires the two surfaces to read as a
+   *       single unit, with no detached gap between the tabs and the
+   *       prediction widget. */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-traffic-card {
+    display: block !important;
+    order: 20;
+    margin-top: 0;
+    padding: 12px 14px !important;
+  }
+
+  .mobile-bottom-traffic-card > div:first-child {
+    display: none !important; /* SectionHeader "🔮 trafficPrediction" */
+  }
+
+  /* f) ── Row 2: Main CTA row.  On mobile-idle the recommend-route button
+   *       lives inside the floating top card (next to the FROM/TO inputs)
+   *       so this row is hidden in idle.  In preview/navigating phases
+   *       the row hosts the big green "انطلق" / red "إنهاء الملاحة"
+   *       primary CTA — see the phase cascade below. */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row {
+    display: flex !important;
+    order: 30;
+  }
+
+  .floating-sidebar[data-route-state="idle"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row {
+    display: none !important;
+  }
+
+  /* g) ── Row 3: 60-minute traffic Simulation button.  This is one of the
+   *       three core idle features that must stay visible — explicitly
+   *       opt the simulation button back in (the default `display:none`
+   *       cascade for `.sidebar-main-content > *` would otherwise hide
+   *       it).  Phase-gated below: hidden in preview / navigating. */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-sim-btn {
+    display: flex !important;
+    order: 35;
+  }
+
+  /* h) ── Row 1: Primary tab toggle — التنقل / نقطة التجمع tabs.
+   *       Pinned as the very first content row of the bottom sheet,
+   *       sitting immediately under the drag handle and directly on top
+   *       of the prediction widget.
+   *
+   *       The tab block is now placed first in the JSX (immediately
+   *       after `.sidebar-pull-handle`) — we deliberately do NOT use
+   *       `order: 1` here.  Forcing a flex `order` over the
+   *       `display: contents` cascade was unreliable in some browsers
+   *       (the tabs occasionally rendered at the very bottom of the
+   *       sheet, getting clipped by the safe-area inset).  Source-order
+   *       placement is the contract now: no `order`, no `margin-top:
+   *       auto`, no `position: absolute` — the tabs flow naturally as
+   *       the first item of the card.
+   *
+   *       Visual contract: the tab row must read as the *header* of the
+   *       prediction card below it — no detached gap, no separator
+   *       border.  We zero out the bottom padding, the vertical margins
+   *       and the previous separator border so the tabs visually merge
+   *       into the bottom-sheet surface together with the AI Prediction
+   *       widget that follows.  Their original blue / purple gradients
+   *       on the active button are preserved.  Phase-gated below: hidden
+   *       in preview / navigating so the sheet stays a clean
+   *       route-summary + Go-button surface. */
+  .floating-sidebar > .mobile-bottom-tabs {
+    padding: 4px 0 0 !important;
+    margin: 0 !important;
+    border-bottom: none !important;
+  }
+
+  .floating-sidebar > .mobile-bottom-tabs > button {
+    padding: 10px 0 !important;
+    font-size: 12px !important;
+    border-radius: 12px !important;
+    min-height: 42px;
+  }
+
+  /* The sidebar uses `gap: 8px` between flex rows on mobile.  Absorb that
+   * gap on the rows that sit immediately below the tabs so the tab strip
+   * reads as the header of the prediction card / meeting panel beneath
+   * it (no detached air gap, no visual seam). */
+  .floating-sidebar[data-route-state="idle"]
+    > .sidebar-main-content
+    > .mobile-bottom-traffic-card {
+    margin-top: -8px !important;
+  }
+
+  /* The Meeting-Point panel (rendered when activeTab === "meeting") is a
+   * direct child of `.floating-sidebar`.  It now sits AFTER the tabs
+   * naturally via JSX source order — no flex `order` needed — and pulls
+   * up by -8 px to absorb the sidebar's row-gap, so the tabs feel
+   * attached to the panel beneath them on the Meeting-Point tab. */
+  .floating-sidebar > .mobile-meeting-panel {
+    margin-top: -8px !important;
+  }
+
+  /* i) ── Top-bar offsets: nudge the LocateMe / Copilot FABs, the
+   *       speed-gauge HUD and the alert/toast stacks below the new
+   *       floating top search panel so they don't overlap with the
+   *       FROM / TO inputs or the in-card "اقتراح الطريق" CTA.
+   *
+   *       The floating card is at most ~210 px tall (two inputs + swap
+   *       + recommend CTA + paddings).  The Traffic Analytics panel is
+   *       anchored top-left at top: 230 px (collapsed: ~42 px tall), so
+   *       the LocateMe and Copilot FABs sit BELOW the analytics chip on
+   *       the same left rail to avoid horizontal overlap with its
+   *       ~184 px width.  The speed-gauge stays on the right edge and
+   *       does not collide with anything on the left.
+   *
+   *       Vertical stack on the left rail (mobile, idle phase):
+   *           - Top search panel        : env-top + 12  → ~env-top + 220
+   *           - Analytics dashboard      : env-top + 230 → env-top + 272 (collapsed)
+   *           - LocateMe FAB             : env-top + 285 → env-top + 335
+   *           - Copilot FAB              : env-top + 345 → env-top + 395
+   *           - Copilot panel (open)     : env-top + 405 → drops downward
+   */
+  .locate-me-btn {
+    top: calc(285px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .copilot-fab-wrapper {
+    top: calc(345px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .copilot-panel {
+    top: calc(405px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .speed-gauge-root {
+    top: calc(225px + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+
+/* ─── Swap (From ↔ To) icon button — rendered on every breakpoint ────────── */
+/*
+ * Lives between the FROM and TO inputs inside the destination card.
+ * Negative vertical margins let it overlap the input edges so the visual
+ * affordance reads as a single connected control stack (matches the
+ * Google-Maps mobile pattern).  Hover/focus rotate the icon 180° to
+ * communicate the swap action.
+ */
+.dest-swap-row {
+  display: flex;
+  justify-content: center;
+  margin: -2px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.dest-swap-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(2, 8, 24, 0.85);
+  border: 1.5px solid rgba(96, 165, 250, 0.32);
+  color: #60A5FA;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+
+.dest-swap-btn:hover,
+.dest-swap-btn:focus-visible {
+  transform: rotate(180deg);
+  background: rgba(14, 165, 233, 0.22);
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.35), 0 4px 12px rgba(0, 0, 0, 0.45);
+  outline: none;
+}
+
+.dest-swap-btn:active {
+  transform: rotate(180deg) scale(0.92);
+}
+
+/* =======================================================================
+ * ▼▼▼  Mobile Unified-Bottom-Sheet Overhaul  (≤ 768 px)  ▼▼▼
+ *
+ * Final layer of the mobile-only redesign brief.  Three goals:
+ *
+ *   1. Eliminate the overlap between the `nav-controls-dock` (Start /
+ *      Exit / Re-center pill cluster) and the `floating-sidebar` bottom
+ *      sheet.  The sidebar now owns the entire bottom-sheet surface and
+ *      renders a state-aware primary CTA (recommend / انطلق / إنهاء).
+ *
+ *   2. Pin the FROM / TO destination inputs to the very top of the
+ *      viewport as a clean fixed pill stack — full width, sleek,
+ *      no white backgrounds, microphone / GPS icons neatly arranged.
+ *
+ *   3. Drive the bottom-sheet content via a `[data-route-state]` cascade
+ *      on the sidebar root so the visible cards swap between Phase 1
+ *      (idle) and Phase 2 (preview / navigating) without restructuring
+ *      the React tree:
+ *
+ *        idle        → traffic-prediction card + recommend CTA + tabs
+ *        preview     → route-summary card     + انطلق CTA       + tabs
+ *        navigating  → route-summary card     + إنهاء CTA       + tabs
+ *
+ * All colors stay on the dark gunmetal / indigo palette — no white
+ * backgrounds are introduced anywhere in this layer.  Every rule is
+ * scoped inside `@media (max-width: 768px)` so desktop is untouched.
+ * ======================================================================= */
+
+@media (max-width: 768px) {
+
+  /* ── 1. Suppress the duplicate Navigation bottom-dock ──────────────────
+   * The sidebar bottom-sheet now hosts the start / exit CTAs inline, so
+   * the second floating panel is redundant on mobile.  Hiding the wrapper
+   * dock also kills the inline status-row clutter that used to overlap
+   * the bottom sheet during active navigation. */
+  .nav-controls-dock {
+    display: none !important;
+  }
+
+  /* ── Re-center FAB: thumb-reachable, anchored above the bottom sheet ──
+   *
+   * Field-test feedback: while navigating, panning the map surfaced a
+   * "إعادة تمركز" pill at the very top of the screen — a long thumb
+   * stretch on a moving vehicle and a safety hazard.  The pill now docks
+   * to the bottom-right corner, just above the unified bottom sheet, so
+   * the driver can re-center with their natural thumb position.
+   *
+   * Bottom-offset rationale:
+   *   The bottom sheet during active navigation contains the pull
+   *   handle (28 px), an 80–110 px route-summary card, a 50 px exit
+   *   CTA, gaps and 8 + safe-area padding — totalling ~210 + safe-area
+   *   pixels of visible sheet height.  220 px + safe-area parks the FAB
+   *   exactly on the sheet's top edge with breathing room above so it
+   *   never overlaps the route summary or the exit button.
+   *
+   *   `.recenter-fab` only renders while `isNavigating && !isMapCentered`
+   *   (see NavigationControls.js), so this offset only needs to clear the
+   *   `data-route-state="navigating"` sheet height — preview / idle never
+   *   show this FAB.
+   *
+   *   It also sits well clear of the .mobile-sidebar-fab (bottom: 60,
+   *   right: 20) and the bottom-sheet contents themselves. */
+  .recenter-fab {
+    display: flex !important;
+    top: auto !important;
+    bottom: calc(220px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 15px !important;
+    left: auto !important;
+    z-index: 1200 !important;
+  }
+
+  /* RTL: mirror to the bottom-LEFT so the thumb-reachable corner matches
+   * the user's dominant interaction side in Arabic layouts. */
+  [dir="rtl"] .recenter-fab {
+    right: auto !important;
+    left: 15px !important;
+  }
+
+
+  /* ── 2. Floating top inputs — see the dedicated `.mobile-top-search-panel`
+   *      block lower in this file.
+   *
+   * Background:
+   *   The destination card was previously kept inside `.floating-sidebar`
+   *   and "promoted" to a fixed top container via descendant selectors
+   *   (`.floating-sidebar > .sidebar-main-content > .mobile-floating-inputs-card`).
+   *   That approach failed: the bottom-sheet ancestor applies
+   *   `transform: translateY(...)` for its slide animation, which (per CSS
+   *   spec) becomes the containing block for any `position: fixed`
+   *   descendant.  The pinned panel therefore anchored to the SHEET, not the
+   *   viewport, and ended up hovering directly over the traffic alert and
+   *   the primary CTA button.
+   *
+   * Fix:
+   *   Sidebar.js now portals the card to `document.body` on mobile (see the
+   *   `useIsMobile` hook there).  All top-panel styling lives under the new
+   *   `.mobile-top-search-panel` selector at document-root level, free from
+   *   any transformed ancestor. */
+
+
+  /* ── 3. Bottom sheet — sleek, dark, low-profile ────────────────────────
+   * Lower max-height so the map gets the lion's share of the screen
+   * (~60 %) and the sheet only consumes the bottom ~40 %.  Top-rounded
+   * corners stay at 18 px to match the design brief.
+   *
+   * z-index 9998 — sits one layer below the top search panel (9999) so the
+   * top inputs always remain above the sheet, never the other way around. */
+  .floating-sidebar {
+    max-height: min(42vh, 360px) !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: rgba(15, 20, 32, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow:
+      0 -16px 44px rgba(0, 0, 0, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    gap: 8px !important;
+    padding: 0 12px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 9998 !important;
+  }
+
+
+  /* ── 4. Phase-aware visibility cascade ─────────────────────────────────
+   * Using attribute selectors on the sidebar root we toggle which cards
+   * are visible without re-mounting React subtrees.
+   *
+   *   data-route-state="idle"        → restored features:
+   *                                       • AI Prediction card
+   *                                       • 60-minute Simulation button
+   *                                       • التنقل / نقطة التجمع tabs
+   *
+   *   data-route-state="preview"     → route-summary card + green "انطلق"
+   *                                    primary CTA — and nothing else.
+   *
+   *   data-route-state="navigating"  → route-summary card + red
+   *                                    "إنهاء الملاحة" primary CTA.
+   */
+
+  /* Always render the route-summary card on mobile when present, but only
+   * make it visible during preview / navigating phases. */
+  .floating-sidebar > .sidebar-main-content > .mobile-route-summary-card {
+    display: none !important;
+    order: 18;
+    margin-top: 4px;
+  }
+
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content > .mobile-route-summary-card,
+  .floating-sidebar[data-route-state="navigating"]
+    > .sidebar-main-content > .mobile-route-summary-card {
+    display: block !important;
+  }
+
+  /* Phase 2 (preview / navigating): hide the idle-only features so the
+   * sheet collapses to "route summary + primary CTA" only.  This matches
+   * the brief: "The bottom sheet must ONLY be used for the route summary
+   * (Distance, Time, big green Go button) when a route is previewed /
+   * navigating." */
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content > .mobile-bottom-traffic-card,
+  .floating-sidebar[data-route-state="navigating"]
+    > .sidebar-main-content > .mobile-bottom-traffic-card,
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content > .mobile-bottom-sim-btn,
+  .floating-sidebar[data-route-state="navigating"]
+    > .sidebar-main-content > .mobile-bottom-sim-btn,
+  .floating-sidebar[data-route-state="preview"]
+    > .mobile-bottom-tabs,
+  .floating-sidebar[data-route-state="navigating"]
+    > .mobile-bottom-tabs {
+    display: none !important;
+  }
+
+
+  /* ── 5. Primary CTA row — vertical stack with secondary on the left ───
+   * Convert the row into a column so the primary CTA sits on its own
+   * line (full-width, large hit-target) and the "مسح الطريق" text button
+   * sits underneath, aligned to the leading edge as a discreet,
+   * underlined-style action.  Matches the brief's "below the main button
+   * on the left" requirement without introducing a white background. */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+    padding: 0 !important;
+  }
+
+  /* Primary CTA always full width on mobile */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row > .mobile-cta-primary {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    padding: 14px 0 !important;
+    font-size: 14px !important;
+    border-radius: 14px !important;
+    min-height: 50px !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+    pointer-events: auto !important;
+  }
+
+  /* Secondary "Clear" — small ghost text-button, left-aligned, no
+   * background.  Visible only in idle / preview phases (the React tree
+   * already removes it during navigating). */
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row > .mobile-cta-clear {
+    align-self: flex-start !important;
+    padding: 6px 4px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #64748B !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.3px;
+    text-decoration: underline;
+    text-decoration-color: rgba(100, 116, 139, 0.45);
+    text-underline-offset: 3px;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    min-height: auto !important;
+  }
+
+  /* RTL: keep the small "clear" text on the trailing side (start edge).
+   * `align-self: flex-start` already uses logical properties so RTL
+   * inherits correctly via the `direction: rtl` on the sidebar root. */
+  [dir="rtl"] .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row > .mobile-cta-clear {
+    align-self: flex-start !important;
+  }
+
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row > .mobile-cta-clear:hover,
+  .floating-sidebar > .sidebar-main-content > .mobile-bottom-cta-row > .mobile-cta-clear:active {
+    color: #CBD5E1 !important;
+    background: transparent !important;
+    transform: none !important;
+    text-decoration-color: rgba(203, 213, 225, 0.55);
+  }
+
+
+  /* ── 5b. Preview phase: side-by-side "انطلق" + "إلغاء المسار" pills ─────
+   * In the `preview` phase (route ready, not yet driving) we override the
+   * column-stacked layout above so the primary CTA and the cancel action
+   * render as two pills sharing the same row.  Rationale: the column
+   * variant rendered the cancel button as a discreet underlined ghost
+   * link, which gave the user no obvious way to back out of a previewed
+   * route.  Switching to a row layout with `flex: 2` / `flex: 1` keeps
+   * the green "Start" button visually dominant while making the cancel
+   * action a first-class, easily tappable secondary button.
+   *
+   * `idle` and `navigating` phases are unchanged — `idle` keeps the
+   * column ghost-link style for the recommend-route phase, and
+   * `navigating` doesn't render the cancel button at all (the JSX gates
+   * it with `mobileRouteState !== "navigating"`). */
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row {
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row
+    > .mobile-cta-primary {
+    flex: 2 !important;
+    width: auto !important;
+  }
+
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row
+    > .mobile-cta-clear {
+    flex: 1 !important;
+    align-self: stretch !important;
+    padding: 14px 10px !important;
+    background: rgba(51, 65, 85, 0.65) !important;
+    border: 1px solid rgba(148, 163, 184, 0.28) !important;
+    border-radius: 14px !important;
+    color: #E2E8F0 !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px !important;
+    text-decoration: none !important;
+    text-decoration-color: transparent !important;
+    text-underline-offset: 0 !important;
+    min-height: 50px !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow:
+      0 2px 10px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
+
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row
+    > .mobile-cta-clear:hover,
+  .floating-sidebar[data-route-state="preview"]
+    > .sidebar-main-content
+    > .mobile-bottom-cta-row
+    > .mobile-cta-clear:active {
+    background: rgba(71, 85, 105, 0.85) !important;
+    border-color: rgba(203, 213, 225, 0.40) !important;
+    color: #FFFFFF !important;
+    text-decoration: none !important;
+    text-decoration-color: transparent !important;
+  }
+
+
+  /* ── 6. Top FABs and alert/toast surfaces ───────────────────────────────
+   * The FAB and alert offsets are defined ONCE in the layout-decoupling
+   * block above (sub-rule "i") so they stay below the floating top
+   * search card on every mobile viewport.  Do NOT redeclare them here —
+   * earlier the file had two competing copies which drifted out of sync.
+   *
+   * Alerts (Saher / Camera / sequential toast / nav-banner) are repositioned
+   * and lifted in z-index in the `Mobile Alert Layering` block at the
+   * bottom of this file. */
+
+
+  /* ── 7. Hint text inside the sidebar ───────────────────────────────────
+   * The "click on the map for prediction" hint can wrap to two lines and
+   * inflate the bottom-sheet height.  Cap to one line + ellipsis so the
+   * sheet height stays predictable. */
+  .floating-sidebar .mobile-bottom-traffic-card div[style*="textAlign: center"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+
+/* =======================================================================
+ * ▼▼▼  Mobile Top Search Panel (`.mobile-top-search-panel`)  ▼▼▼
+ *
+ * The destination card (FROM / TO + swap button + recommend-route CTA in
+ * the idle phase) is rendered through a React portal into `document.body`
+ * on mobile (≤ 768 px) so its `position: fixed` styles anchor to the
+ * actual viewport — see Sidebar.js `useIsMobile` hook for the underlying
+ * CSS containing-block rationale (a transformed ancestor would otherwise
+ * capture the fixed-positioning containing block).
+ *
+ * Visual contract (compact-redesign revision — matches Google-Maps mobile
+ * floating search bar):
+ *   - Floats as a CARD, never glued to the viewport edge — clears the
+ *     iOS notch / Android status bar via `safe-area-inset-top`, sits with
+ *     an 8 px top breathing room, a 12 px side gutter, and an 18 px corner
+ *     radius for a tight floating-capsule silhouette.
+ *   - Dark frosted glassmorphism — translucent gradient (~0.78 → 0.70 alpha)
+ *     plus a 28 px backdrop blur lets the map show through while keeping
+ *     text legible.  Never a white background.
+ *   - Hosts the FROM / TO inputs (slim rounded-rect, ~34 px tall), the
+ *     compact swap icon (26 × 26), AND the primary "اقتراح الطريق" CTA
+ *     (44 px tall — Apple HIG touch-target minimum) — all in ~150 px of
+ *     vertical real estate so the map dominates the screen.
+ *
+ * Layering contract:
+ *   - `.mobile-top-search-panel`  z-index: 9999   (search card)
+ *   - `.floating-sidebar`         z-index: 9998   (bottom sheet)
+ *   - `.mobile-sidebar-fab`       z-index: 10000  (defensive)
+ *   - Alert surfaces              z-index: 10100+ (lifted globally below)
+ *
+ * Class-gated by JS (only applied when `useIsMobile()` returns true), so
+ * the media query below is purely defensive — desktop never gets this
+ * class on the destination card.
+ * ======================================================================= */
+
+@media (max-width: 768px) {
+  /*
+   * ── Compact floating dark-glass search card ─────────────────────────────
+   *
+   * Design contract (redesigned for maximum screen economy):
+   *   • Sits 6 px below the system status bar with 10 px side gutters.
+   *   • Drastic backdrop-blur (32 px) + deep dark gradient makes the map
+   *     visible underneath while keeping text legible in full sun.
+   *   • All labels and section headers are hidden — placeholders convey
+   *     the field semantics — saving an extra ~20 px.
+   *   • Input height trimmed to 34 px; swap button to 24 × 24.
+   *   • CTA button kept at 40 px (touch-target minimum for compact mode).
+   *   • Total idle height target: ≤ 140 px (from top safe-area edge).
+   */
+  .mobile-top-search-panel {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: auto !important;
+    z-index: 9999 !important;
+
+    margin: 0 !important;
+    padding: 6px 8px !important;
+
+    /* Deep frosted-glass — nearly opaque dark surface, heavy blur,
+       thin top-edge highlight for depth perception. */
+    background: linear-gradient(
+      180deg,
+      rgba(6, 10, 20, 0.88) 0%,
+      rgba(9, 15, 28, 0.82) 100%
+    ) !important;
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 20px !important;
+
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.60),
+      0 1px 0 rgba(255, 255, 255, 0.05) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.30);
+
+    overflow: visible !important;
+
+    font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, Arial, Tahoma, sans-serif;
+
+    animation: topSearchPanelSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Hide the SectionHeader (📍 الوجهة) — saves ~28 px of vertical space. */
+  .mobile-top-search-panel > div:first-child {
+    display: none !important;
+  }
+
+  /* Zero out block margins between FROM / swap / TO rows. */
+  .mobile-top-search-panel > div {
+    margin-bottom: 0 !important;
+  }
+
+  /* Suppress the "FROM" / "TO" uppercase micro-labels. */
+  .mobile-top-search-panel label,
+  .mobile-top-search-panel span[style*="uppercase"] {
+    display: none !important;
+  }
+
+  /* Suppress the "click map for destination" hint line. */
+  .mobile-top-search-panel > div[style*="color: rgb(51, 65, 85)"]:last-child {
+    display: none !important;
+  }
+
+  /* ── Ultra-compact inputs ────────────────────────────────────────────
+   * 6 px vertical padding → ~34 px total height per input.
+   * 12.5 px text keeps Arabic script legible at this height.           */
+  .mobile-top-search-panel input[type="text"] {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    font-size: 12.5px !important;
+    border-radius: 12px !important;
+    border-width: 1px !important;
+    background: rgba(2, 6, 18, 0.65) !important;
+    min-height: unset !important;
+  }
+
+  /* ── Micro swap button (24 × 24) ────────────────────────────────────── */
+  .mobile-top-search-panel .dest-swap-row {
+    margin: -2px 0;
+  }
+
+  .mobile-top-search-panel .dest-swap-btn {
+    width: 24px;
+    height: 24px;
+    border-width: 1px;
+  }
+
+  .mobile-top-search-panel .dest-swap-btn svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ── Compact CTA (40 px, Apple HIG-safe) ───────────────────────────── */
+  .mobile-top-search-panel .mobile-top-cta-row {
+    margin-top: 6px;
+    display: flex;
+    position: relative;
+    z-index: 2;       /* sit above any pseudo-element or backdrop */
+    pointer-events: auto;
+  }
+
+  .mobile-top-search-panel .mobile-top-cta-primary {
+    flex: 1;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    box-shadow:
+      0 4px 14px rgba(37, 99, 235, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Eliminate the 300 ms tap-delay on iOS/Android without disabling all
+       touch gestures.  `manipulation` only suppresses double-tap-to-zoom
+       so tap events fire immediately — critical for a "feels unresponsive"
+       complaint on mobile. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    pointer-events: auto;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease,
+      opacity 0.16s ease;
+  }
+
+  .mobile-top-search-panel .mobile-top-cta-primary:hover,
+  .mobile-top-search-panel .mobile-top-cta-primary:focus-visible {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #1E40AF, #2563EB);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.60);
+    outline: none;
+  }
+
+  .mobile-top-search-panel .mobile-top-cta-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.40);
+  }
+
+  .mobile-top-search-panel .mobile-top-cta-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.60;
+    transform: none;
+  }
+}
+
+@keyframes topSearchPanelSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes apiToastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+
+/* =======================================================================
+ * ▼▼▼  Mobile Alert Layering  ▼▼▼
+ *
+ * The floating top search panel sits at z-index 9999.  Without explicit
+ * lifting, every alert surface (Saher 400 m radar, camera-proximity
+ * banner, sequential toast queue, turn-by-turn navigation banner) would
+ * render behind it — that is unacceptable for safety alerts.
+ *
+ * Strategy (mobile only, so desktop is untouched):
+ *   1. Lift every alert surface above the search card with z-index
+ *      10100+ so they are NEVER blocked.
+ *   2. Override their inline `top` offsets so they appear directly under
+ *      the floating top card (≈ 220 px from the viewport top), keeping
+ *      the user's eye flow continuous from "where am I going" → "what
+ *      hazard is ahead".
+ *
+ * IMPORTANT — alert behaviour is NOT changed.  The toast queue, dismiss
+ * timers, Saher proximity radius, camera triggers and reroute logic all
+ * stay exactly as they were.  Only the visual stacking order and the
+ * top offset on small viewports are adjusted via CSS.
+ * ======================================================================= */
+
+@media (max-width: 768px) {
+  .saher-alert-badge,
+  .camera-proximity-banner,
+  .sequential-toast-stack,
+  .nav-banner-root,
+  .nav-rerouting-indicator {
+    z-index: 10100 !important;
+  }
+
+  /* Place top-of-screen alerts directly below the floating top card.
+     Offset targets the new compact card height (~140 px) + 10 px gap. */
+  .saher-alert-badge,
+  .camera-proximity-banner,
+  .sequential-toast-stack {
+    top: calc(env(safe-area-inset-top, 0px) + 156px) !important;
+  }
+
+  /* During active navigation the floating top search card collapses out
+     of the viewport so the turn-by-turn `NavigationBanner` owns the top
+     edge.  The bottom sheet swaps to its route-summary + "إنهاء الملاحة"
+     phase via `data-route-state="navigating"` on the sidebar root, so
+     the user has a single, focused driving HUD.
+     The card mounts back in once the user exits navigation (state flips
+     to `preview` or `idle`). */
+  .mobile-top-search-panel[data-route-state="navigating"] {
+    display: none !important;
+  }
+
+  /* When the nav-banner is visible (active navigation) the alert/toast
+     stack sits BELOW it (banner is anchored at the top edge with a height
+     of ~84 px after safe-area).  The 220 px offset above already clears
+     both the banner and the search card on every common viewport. */
+
+  /* ── Fix 1: Traffic Simulation progress bar ─────────────────────────────
+   * The bar uses position:absolute + z-index:1002 in its inline styles,
+   * which buries it behind the bottom sheet (z-index:9998).
+   * On mobile we switch it to a viewport-fixed surface and promote it
+   * above every other overlay (10200 > 10100 alert surfaces > 9999 search
+   * card > 9998 bottom sheet).  The bottom offset (90px) clears the 52px
+   * collapsed drag handle with comfortable breathing room. */
+  .simulation-status-bar {
+    position: fixed !important;
+    bottom: 90px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 10200 !important;
+  }
+
+  /* ── Fix 2: Navigation ETA / Distance / Arrival dashboard ───────────────
+   * The inline bottom:168px leaves the pill floating ~116px above the
+   * 52px collapsed drag handle, making it look unanchored in the middle of
+   * the map.  Moving it to bottom:15% pins it to the lower edge of the
+   * visible map area — still well above the drag handle and the circular
+   * map-action buttons (bottom:60px), but visually part of the driving HUD
+   * rather than a disconnected island in the centre of the screen. */
+  .nav-eta-dashboard {
+    bottom: 15% !important;
+  }
+}
+
+
+/* ??? Pre-trip planner shell ????????????????????????????????????????????????? */
+
+.planner-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(13, 148, 136, 0.18), transparent 45%),
+    radial-gradient(ellipse at 80% 90%, rgba(194, 65, 12, 0.12), transparent 40%),
+    linear-gradient(160deg, #292524 0%, #1C1917 55%, #0C0A09 100%);
+}
+
+.planner-map-plane {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.planner-map-veil {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(28, 25, 23, 0.55) 0%, rgba(28, 25, 23, 0.08) 42%, transparent 65%);
+  z-index: 400;
+}
+
+.planner-panel {
+  position: relative;
+  z-index: 500;
+  width: min(420px, 94vw);
+  max-height: calc(100% - 24px);
+  margin: 12px;
+  overflow: auto;
+  padding: 20px 18px 28px;
+  border-radius: 0;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  color: var(--sand);
+}
+
+.planner-brand {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.planner-logo {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #F8F4EC;
+  letter-spacing: -0.02em;
+}
+
+.planner-brand p {
+  margin: 6px 0 0;
+  color: var(--sand-deep);
+  font-size: 0.92rem;
+}
+
+.planner-auth-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.planner-user {
+  font-size: 0.78rem;
+  color: var(--sand-deep);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planner-section {
+  margin-top: 18px;
+}
+
+.planner-section h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #F8F4EC;
+}
+
+.planner-field {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.82rem;
+  color: var(--sand-deep);
+}
+
+.planner-field input,
+.planner-form input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px 12px;
+  border: 1px solid rgba(232, 220, 200, 0.18);
+  background: rgba(12, 10, 9, 0.55);
+  color: #F8F4EC;
+  border-radius: 0;
+  font: inherit;
+}
+
+.planner-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.planner-input-row input {
+  flex: 1;
+}
+
+.planner-suggestions {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  background: #0C0A09;
+}
+
+.planner-suggestions button {
+  width: 100%;
+  text-align: start;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--sand);
+  font: inherit;
+  cursor: pointer;
+}
+
+.planner-suggestions button:hover {
+  background: rgba(13, 148, 136, 0.18);
+}
+
+.planner-selected {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--teal);
+}
+
+.planner-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.planner-btn {
+  border: 1px solid transparent;
+  padding: 11px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.planner-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.planner-btn.primary {
+  flex: 1;
+  background: var(--teal);
+  color: #042F2E;
+}
+
+.planner-btn.primary:hover:not(:disabled) {
+  background: #14B8A6;
+}
+
+.planner-btn.ghost {
+  background: transparent;
+  border-color: rgba(232, 220, 200, 0.22);
+  color: var(--sand);
+}
+
+.planner-link {
+  border: 0;
+  background: none;
+  color: var(--teal);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.planner-error {
+  margin-top: 10px;
+  color: #FDBA74;
+  font-size: 0.85rem;
+}
+
+.planner-muted {
+  color: var(--sand-deep);
+  font-size: 0.88rem;
+}
+
+.planner-advice {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.45);
+}
+
+.planner-advice.go {
+  border-color: rgba(13, 148, 136, 0.45);
+}
+
+.planner-advice.wait {
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+.planner-advice-title {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.35rem;
+  margin-bottom: 6px;
+}
+
+.planner-advice p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--sand-deep);
+  font-size: 0.9rem;
+}
+
+.planner-advice-meta {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #F8F4EC;
+}
+
+.planner-mock-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid rgba(217, 119, 6, 0.55);
+  color: #FBBF24;
+}
+
+.planner-route-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planner-route-card {
+  text-align: start;
+  padding: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.4);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.planner-route-card.active {
+  border-color: rgba(13, 148, 136, 0.55);
+  background: rgba(13, 148, 136, 0.12);
+}
+
+.planner-route-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-route-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.planner-health {
+  margin-inline-start: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.planner-health small {
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--sand-deep);
+}
+
+.planner-health.good { color: var(--ok); }
+.planner-health.ok { color: var(--warn); }
+.planner-health.poor { color: #F97316; }
+
+.planner-route-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--sand-deep);
+}
+
+.planner-fuel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.planner-fuel-row div {
+  padding: 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.35);
+}
+
+.planner-fuel-row strong {
+  display: block;
+  font-size: 1.25rem;
+  color: #F8F4EC;
+}
+
+.planner-fuel-row span {
+  color: var(--sand-deep);
+  font-size: 0.8rem;
+}
+
+.planner-trends-hint {
+  margin: -4px 0 12px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.planner-trends {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  height: 168px;
+  margin-bottom: 12px;
+  padding: 8px 4px 4px;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.35);
+}
+
+.planner-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.planner-trend-col.best .planner-trend-bar {
+  outline: 1px solid rgba(94, 234, 212, 0.7);
+}
+
+.planner-trend-eta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #F8F4EC;
+}
+
+.planner-trend-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-height: 72px;
+}
+
+.planner-trend-bar {
+  width: 100%;
+  min-height: 4px;
+  transition: height 0.35s ease;
+}
+
+.planner-trend-label,
+.planner-trend-pct {
+  font-size: 0.7rem;
+  color: var(--sand-deep);
+}
+
+.planner-trend-best {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #5EEAD4;
+  letter-spacing: 0.02em;
+}
+
+.planner-departure-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.planner-departure-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(232, 220, 200, 0.08);
+  font-size: 0.82rem;
+  color: var(--sand-deep);
+}
+
+.planner-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.planner-history-list li {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+  margin-bottom: 8px;
+}
+
+.planner-history-main {
+  flex: 1;
+  text-align: start;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.4);
+  color: inherit;
+  padding: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.planner-history-main strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.88rem;
+}
+
+.planner-history-main span {
+  font-size: 0.78rem;
+  color: var(--sand-deep);
+}
+
+.planner-icon-btn {
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--sand-deep);
+  width: 36px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.planner-save-msg {
+  margin-top: 8px;
+  color: #5EEAD4;
+  font-size: 0.85rem;
+}
+
+.planner-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(12, 10, 9, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.planner-modal {
+  width: min(400px, 100%);
+  padding: 22px;
+  background: #1C1917;
+  border: 1px solid var(--panel-border);
+  color: var(--sand);
+}
+
+.planner-modal h2 {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+}
+
+.planner-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.planner-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--sand-deep);
+}
+
+@media (max-width: 820px) {
+  .planner-shell {
+    flex-direction: column;
+  }
+
+  .planner-map-plane {
+    position: relative;
+    height: 42vh;
+    flex-shrink: 0;
+  }
+
+  .planner-map-veil {
+    background: linear-gradient(180deg, transparent 40%, rgba(28, 25, 23, 0.75) 100%);
+  }
+
+  .planner-panel {
+    width: 100%;
+    margin: 0;
+    max-height: none;
+    flex: 1;
+    border-inline: 0;
+    border-bottom: 0;
+  }
+}

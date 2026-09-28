@@ -1,0 +1,83 @@
+<svg width="680" height="400" viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pinGrad2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#378ADD"/>
+      <stop offset="100%" stop-color="#1D9E75"/>
+    </linearGradient>
+    <radialGradient id="pinGlow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1D9E75" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1D9E75" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Dark background card -->
+  <rect x="40" y="30" width="600" height="340" rx="20" fill="#0C0E14"/>
+
+  <!-- Grid lines (map feel) -->
+  <line x1="40" y1="130" x2="640" y2="130" stroke="#1a2230" stroke-width="1"/>
+  <line x1="40" y1="200" x2="640" y2="200" stroke="#1a2230" stroke-width="1"/>
+  <line x1="40" y1="270" x2="640" y2="270" stroke="#1a2230" stroke-width="1"/>
+  <line x1="180" y1="30" x2="180" y2="370" stroke="#1a2230" stroke-width="1"/>
+  <line x1="320" y1="30" x2="320" y2="370" stroke="#1a2230" stroke-width="1"/>
+  <line x1="460" y1="30" x2="460" y2="370" stroke="#1a2230" stroke-width="1"/>
+
+  <!-- Glow blob behind pin -->
+  <ellipse cx="260" cy="225" rx="80" ry="35" fill="url(#pinGlow2)"/>
+
+  <!-- Pin body -->
+  <path d="M260,82 C293,82 320,109 320,142 C320,175 295,202 260,237 C225,202 200,175 200,142 C200,109 227,82 260,82 Z" fill="url(#pinGrad2)"/>
+
+  <!-- Pin inner dark circle -->
+  <circle cx="260" cy="142" r="28" fill="#0C0E14" opacity="0.85"/>
+
+  <!-- Road arrows inside pin -->
+  <rect x="248" y="128" width="7" height="20" rx="3.5" fill="#378ADD" opacity="0.95"/>
+  <polygon points="251.5,125 246,133 257,133" fill="#378ADD" opacity="0.95"/>
+
+  <rect x="266" y="135" width="7" height="20" rx="3.5" fill="#1D9E75" opacity="0.95"/>
+  <polygon points="269.5,158 264,150 275,150" fill="#1D9E75" opacity="0.95"/>
+
+  <circle cx="260" cy="142" r="2.5" fill="#444444" opacity="0.8"/>
+
+  <!-- Tail -->
+  <path d="M252,230 Q260,248 268,230" fill="url(#pinGrad2)"/>
+
+  <!-- Pulse rings -->
+  <circle cx="260" cy="250" r="18" fill="none" stroke="#1D9E75" stroke-width="1" opacity="0.3"/>
+  <circle cx="260" cy="250" r="30" fill="none" stroke="#378ADD" stroke-width="0.8" opacity="0.15"/>
+
+  <!-- Motion lines left -->
+  <line x1="120" y1="178" x2="158" y2="170" stroke="#1D9E75" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+  <line x1="98"  y1="193" x2="142" y2="184" stroke="#1D9E75" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Motion lines right -->
+  <line x1="362" y1="170" x2="398" y2="178" stroke="#378ADD" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+  <line x1="378" y1="184" x2="422" y2="193" stroke="#378ADD" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Wordmark -->
+  <text x="324" y="175"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-weight="700"
+    font-size="46"
+    fill="#E6F1FB"
+    letter-spacing="-1"
+    text-anchor="start">Traff</text>
+  <text x="436" y="175"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-weight="700"
+    font-size="46"
+    fill="#1D9E75"
+    letter-spacing="-1"
+    text-anchor="start">stant</text>
+
+  <!-- Tagline -->
+  <text x="324" y="199"
+    font-family="Arial, sans-serif"
+    font-size="12"
+    fill="#5F5E5A"
+    letter-spacing="3.5"
+    text-anchor="start">TRAFFIC ASSISTANCE</text>
+
+  <!-- Accent line -->
+  <line x1="324" y1="207" x2="556" y2="207" stroke="#1D9E75" stroke-width="1" opacity="0.4"/>
+</svg>
