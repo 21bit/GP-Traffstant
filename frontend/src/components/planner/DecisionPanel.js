@@ -9,6 +9,7 @@ import DepartureTrends from "./DepartureTrends";
 import FuelEstimate from "./FuelEstimate";
 import RouteHealthCard from "./RouteHealthCard";
 import TripHistory from "./TripHistory";
+import { canStartTrip, finishTrip, startTrip } from "../../utils/tripSession";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -39,8 +40,18 @@ export default function DecisionPanel({
   const [locating, setLocating] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [historyKey, setHistoryKey] = useState(0);
+  const [vehicleFuel, setVehicleFuel] = useState(null);
+  const [tripSession, setTripSession] = useState(null);
+  const [tripBusy, setTripBusy] = useState(false);
   const originTimer = useRef(null);
   const destTimer = useRef(null);
+  const tripLock = useRef(false);
+
+  const onFuelEstimate = useCallback((next) => {
+    setVehicleFuel((prev) =>
+      JSON.stringify(prev) === JSON.stringify(next) ? prev : next
+    );
+  }, []);
 
   const activeRoute = useMemo(() => {
     if (!decision?.routes?.length) return null;
@@ -131,6 +142,138 @@ export default function DecisionPanel({
     setDestSuggestions([]);
   };
 
+  useEffect(() => {
+    if (!user || tripSession) return undefined;
+    let cancelled = false;
+    authFetch("/api/trips")
+      .then((data) => {
+        if (cancelled) return;
+        const active = (data.trips || []).find((trip) => trip.status === "active");
+        if (!active) return;
+        setTripSession({
+          id: active.id,
+          persisted: true,
+          status: "active",
+          originName: active.originName,
+          destName: active.destName,
+          startLat: active.startLat,
+          startLng: active.startLng,
+          endLat: active.endLat,
+          endLng: active.endLng,
+          chosenRouteLabel: active.chosenRouteLabel,
+          distanceKm: active.distanceKm,
+          travelTimeMinutes: active.travelTimeMinutes,
+          routeHealthScore: active.routeHealthScore,
+          fuelLiters: active.fuelLiters,
+          fuelCostSar: active.fuelCostSar,
+          startedAt: active.startedAt,
+          endedAt: null,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authFetch, tripSession]);
+
+  const routeForTrip = () => {
+    if (!origin || !destination || !activeRoute) return null;
+    return {
+      originName: originLabel,
+      destName: destLabel,
+      startLat: origin[0],
+      startLng: origin[1],
+      endLat: destination[0],
+      endLng: destination[1],
+      chosenRouteLabel: activeRoute.label,
+      distanceKm: activeRoute.distanceKm,
+      travelTimeMinutes: activeRoute.travelTimeMinutes,
+      routeHealthScore: activeRoute.routeHealthScore,
+      fuelLiters: vehicleFuel?.liters ?? null,
+      fuelCostSar: vehicleFuel?.costSar ?? null,
+    };
+  };
+
+  const beginTrip = async () => {
+    if (tripLock.current || tripBusy) return;
+    const route = routeForTrip();
+    const started = startTrip(tripSession, route);
+    if (!started.ok) {
+      setSaveMessage(t(started.code));
+      return;
+    }
+
+    tripLock.current = true;
+    setTripBusy(true);
+    try {
+      let session = started.session;
+      if (user) {
+        const data = await authFetch("/api/trips", {
+          method: "POST",
+          body: {
+            ...session,
+            recommendationAction: decision?.recommendation?.action,
+            recommendationWaitMinutes: decision?.recommendation?.waitMinutes,
+            predictedEtaMinutes: activeRoute.travelTimeMinutes,
+            snapshot: {
+              recommendation: decision?.recommendation,
+              prediction: decision?.prediction,
+            },
+          },
+        });
+        session = {
+          ...session,
+          id: data.trip.id,
+          persisted: true,
+          startedAt: data.trip.startedAt || session.startedAt,
+        };
+        setHistoryKey((k) => k + 1);
+      }
+      setTripSession(session);
+      setSaveMessage("");
+    } catch (err) {
+      setSaveMessage(err.message);
+    } finally {
+      tripLock.current = false;
+      setTripBusy(false);
+    }
+  };
+
+  const closeTrip = async (outcome) => {
+    if (tripLock.current || tripBusy) return;
+    const closed = finishTrip(tripSession, outcome);
+    if (!closed.ok) {
+      setSaveMessage(t(closed.code));
+      return;
+    }
+    tripLock.current = true;
+    setTripBusy(true);
+    try {
+      if (user && tripSession.id) {
+        const data = await authFetch(`/api/trips/${tripSession.id}`, {
+          method: "PATCH",
+          body: { status: outcome },
+        });
+        setTripSession({
+          ...closed.session,
+          id: data.trip.id,
+          persisted: true,
+          status: data.trip.status,
+          endedAt: data.trip.endedAt,
+        });
+        setHistoryKey((k) => k + 1);
+      } else {
+        setTripSession(closed.session);
+      }
+      setSaveMessage(outcome === "completed" ? t("tripCompleted") : t("tripCancelled"));
+    } catch (err) {
+      setSaveMessage(err.message);
+    } finally {
+      tripLock.current = false;
+      setTripBusy(false);
+    }
+  };
+
   const saveTrip = async () => {
     if (!user) {
       setAuthOpen(true);
@@ -155,8 +298,8 @@ export default function DecisionPanel({
           recommendationAction: decision.recommendation?.action,
           recommendationWaitMinutes: decision.recommendation?.waitMinutes,
           predictedEtaMinutes: activeRoute.travelTimeMinutes,
-          fuelLiters: activeRoute.fuelEstimate?.liters,
-          fuelCostSar: activeRoute.fuelEstimate?.costSar,
+          fuelLiters: vehicleFuel?.liters ?? null,
+          fuelCostSar: vehicleFuel?.costSar ?? null,
           snapshot: {
             recommendation: decision.recommendation,
             prediction: decision.prediction,
@@ -271,7 +414,19 @@ export default function DecisionPanel({
           >
             {loadingDecision ? t("calculating") : t("getDecision")}
           </button>
-          <button type="button" className="planner-btn ghost" onClick={onClear}>
+          <button
+            type="button"
+            className="planner-btn ghost"
+            onClick={() => {
+              if (tripSession?.status === "active") {
+                setSaveMessage(t("endTripBeforeClear"));
+                return;
+              }
+              setTripSession(null);
+              setVehicleFuel(null);
+              onClear();
+            }}
+          >
             {t("clear")}
           </button>
         </div>
@@ -289,18 +444,66 @@ export default function DecisionPanel({
             activeRouteId={activeRoute?.id}
             onSelectRoute={setActiveRouteId}
           />
-          <FuelEstimate fuelEstimate={activeRoute?.fuelEstimate} />
+          <FuelEstimate distanceKm={activeRoute?.distanceKm} onEstimate={onFuelEstimate} />
           <DepartureTrends
             trends={decision.trends}
             departureComparison={decision.departureComparison}
           />
-          <div className="planner-actions">
-            <button type="button" className="planner-btn primary" onClick={saveTrip}>
-              {t("saveTrip")}
-            </button>
-          </div>
+          {tripSession?.status !== "active" && (
+            <div className="planner-actions">
+              <button
+                type="button"
+                className="planner-btn primary"
+                disabled={
+                  tripBusy || !canStartTrip(tripSession, routeForTrip()).ok
+                }
+                onClick={beginTrip}
+              >
+                {t("startTrip")}
+              </button>
+              <button type="button" className="planner-btn ghost" onClick={saveTrip}>
+                {t("saveTrip")}
+              </button>
+            </div>
+          )}
           {saveMessage && <div className="planner-save-msg">{saveMessage}</div>}
         </>
+      )}
+
+      {tripSession?.status === "active" && (
+        <section className="planner-advice go planner-trip-active">
+          <div className="planner-advice-title">{t("tripActive")}</div>
+          <p>
+            {tripSession.originName || t("startPoint")} →{" "}
+            {tripSession.destName || t("destinationPoint")}
+            {tripSession.distanceKm != null ? ` · ${tripSession.distanceKm} ${t("km")}` : ""}
+          </p>
+          <p className="planner-note">{t("tripActiveNote")}</p>
+          {tripSession.startedAt && (
+            <div className="planner-advice-meta">
+              {new Date(tripSession.startedAt).toLocaleString()}
+            </div>
+          )}
+          {!user && <p className="planner-note">{t("guestTripNote")}</p>}
+          <div className="planner-actions">
+            <button
+              type="button"
+              className="planner-btn primary"
+              disabled={tripBusy}
+              onClick={() => closeTrip("completed")}
+            >
+              {t("endTrip")}
+            </button>
+            <button
+              type="button"
+              className="planner-btn ghost"
+              disabled={tripBusy}
+              onClick={() => closeTrip("cancelled")}
+            >
+              {t("cancelTrip")}
+            </button>
+          </div>
+        </section>
       )}
 
       <TripHistory onReuse={reuseTrip} refreshKey={historyKey} />

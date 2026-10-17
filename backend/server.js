@@ -11,6 +11,7 @@ const authRoutes = require("./src/routes/auth");
 const tripsRoutes = require("./src/routes/trips");
 const decisionRoutes = require("./src/routes/decision");
 const mapsRoutes = require("./src/routes/maps");
+const fuelRoutes = require("./src/routes/fuel");
 const { getProviderName } = require("./src/providers/predictionProvider");
 
 const app = express();
@@ -23,10 +24,17 @@ const ALLOWED_ORIGINS = [
   "http://127.0.0.1:3000",
 ];
 
+function isAllowedOrigin(origin) {
+  if (!origin || ALLOWED_ORIGINS.includes(origin)) return true;
+  return /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}):3000$/.test(
+    origin
+  );
+}
+
 app.use(
   cors({
     origin: (incomingOrigin, callback) => {
-      if (!incomingOrigin || ALLOWED_ORIGINS.includes(incomingOrigin)) {
+      if (isAllowedOrigin(incomingOrigin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin '${incomingOrigin}' is not allowed`));
@@ -43,6 +51,11 @@ if (!process.env.TOMTOM_API_KEY) {
 if (!process.env.JWT_SECRET) {
   console.warn("[WARN] JWT_SECRET is not set. Using insecure development default.");
 }
+if (!process.env.GEMINI_API_KEY) {
+  console.warn(
+    "[WARN] GEMINI_API_KEY is not set. Vehicle efficiency estimates will be unavailable until it is configured."
+  );
+}
 
 console.log(`[prediction] Active provider: ${getProviderName()}`);
 
@@ -58,6 +71,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripsRoutes);
 app.use("/api", decisionRoutes);
 app.use("/api", mapsRoutes);
+app.use("/api", fuelRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error("[server]", err.message);

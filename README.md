@@ -11,8 +11,8 @@ User enters origin + destination
         ↓
   TomTom Routing API        ← live routes, traffic flow, incidents
         ↓
-  Express Backend           ← route health scoring, fuel estimate,
-                               leave-now vs. wait decision logic
+  Express Backend           ← route health scoring, leave-now vs. wait,
+                               vehicle efficiency request, fuel cost math
         ↓
   React Dashboard           ← map, ranked routes, departure trends
 ```
@@ -75,7 +75,9 @@ Set these in `backend/.env`:
 - `TOMTOM_API_KEY` — required for routing, geocoding, traffic and incidents
 - `JWT_SECRET` — used to sign login tokens
 - `PREDICTION_PROVIDER` — `mock` (default) or `external`
-- `FUEL_LITERS_PER_100KM` / `FUEL_PRICE_SAR` — fuel-estimate defaults
+- `GEMINI_API_KEY` — Google Gemini key used only to estimate vehicle efficiency in km/L. Trip liters and cost are calculated by the backend. Leave it empty and fuel estimates return an unavailable result instead of crashing.
+- `GEMINI_MODEL` — optional, defaults to `gemini-3.8-flash`
+- Gasoline 91 and 95 prices live in `backend/src/config/fuelPrices.js` (Aramco retail fuels page). Update that file, or set `FUEL_PRICE_91` / `FUEL_PRICE_95`, when the official monthly list changes.
 
 ---
 

@@ -64,6 +64,9 @@ export default function TripHistory({ onReuse, refreshKey }) {
                   {trip.destName || t("destinationPoint")}
                 </strong>
                 <span>
+                  {trip.status === "active" && `${t("tripStatusActive")} · `}
+                  {trip.status === "completed" && `${t("tripStatusCompleted")} · `}
+                  {trip.status === "cancelled" && `${t("tripStatusCancelled")} · `}
                   {trip.travelTimeMinutes != null &&
                     `${trip.travelTimeMinutes} ${t("min")}`}
                   {trip.routeHealthScore != null &&

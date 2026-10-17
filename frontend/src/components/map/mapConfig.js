@@ -269,7 +269,6 @@ export const getMapTheme = () => {
   const hour = new Date().getHours();
   return hour >= 6 && hour < 18 ? "day" : "night";
 };
-
 // ─── Real-time GPS proximity cameras (legacy 500 m engine) ───────────────────
 // Checked on every GPS tick during navigation; alerts show when within
 // CAMERA_ALERT_RADIUS_KM of any entry.
@@ -290,3 +289,4 @@ export const SAHER_PROXIMITY_CAMERAS = [
   { id: "safe_andalus",      coords: [24.6490, 46.6950], type: "mobile", speedLimit: null },
   { id: "safe_olaya_south",  coords: [24.6780, 46.6830], type: "belt",   speedLimit: null },
 ];
+

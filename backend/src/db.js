@@ -49,4 +49,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id);
 `);
 
+function ensureColumn(table, name, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!columns.some((column) => column.name === name)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+  }
+}
+
+ensureColumn("trips", "status", "TEXT NOT NULL DEFAULT 'saved'");
+ensureColumn("trips", "started_at", "TEXT");
+ensureColumn("trips", "ended_at", "TEXT");
+
 module.exports = { db, DB_PATH };

@@ -1,6 +1,5 @@
 const { predictCongestion } = require("../providers/predictionProvider");
 const { computeRouteHealthScore } = require("./routeHealth");
-const { estimateFuel } = require("./fuelEstimate");
 const { fetchRoutes } = require("./tomtomRouting");
 
 const DEFAULT_SLOTS = [0, 15, 30, 45, 60];
@@ -19,7 +18,6 @@ function enrichRoute(route, prediction, incidentCount = 0) {
     prediction,
     incidentCount
   );
-  const fuelEstimate = estimateFuel(distanceKm);
 
   return {
     id: route.id,
@@ -32,7 +30,6 @@ function enrichRoute(route, prediction, incidentCount = 0) {
     trafficLevel: route.trafficLevel,
     trafficDelayMinutes: route.trafficDelay || 0,
     routeHealthScore,
-    fuelEstimate,
     source: route.source || "tomtom",
     lengthInMeters: route.lengthInMeters,
     travelTimeInSeconds: route.travelTimeInSeconds,
@@ -122,7 +119,8 @@ function buildRecommendation(departureComparison, prediction) {
 }
 
 /**
- * Full pre-trip decision: routes now, departure comparison, prediction, fuel.
+ * Full pre-trip decision: routes now, departure comparison, and prediction.
+ * Fuel cost is estimated separately from the selected vehicle.
  */
 async function buildTripDecision({
   startLat,

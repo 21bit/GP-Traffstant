@@ -2159,6 +2159,8 @@ body,
 }
 
 .planner-field input,
+.planner-field select,
+.planner-field textarea,
 .planner-form input {
   width: 100%;
   margin-top: 6px;
@@ -2374,10 +2376,50 @@ body,
   color: var(--sand-deep);
 }
 
+.planner-field-label {
+  margin: 8px 0 6px;
+  font-size: 0.82rem;
+  color: var(--sand-deep);
+}
+
+.planner-choice-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.planner-choice {
+  text-align: start;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  background: rgba(12, 10, 9, 0.35);
+  color: var(--sand);
+  font: inherit;
+  cursor: pointer;
+}
+
+.planner-choice.active {
+  border-color: rgba(13, 148, 136, 0.55);
+  background: rgba(13, 148, 136, 0.12);
+}
+
+.planner-note {
+  margin: 8px 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--sand-deep);
+}
+
+.planner-trip-active {
+  border-color: rgba(13, 148, 136, 0.55);
+}
+
 .planner-fuel-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 10px;
+  margin-top: 12px;
 }
 
 .planner-fuel-row div {
