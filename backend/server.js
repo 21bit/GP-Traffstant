@@ -2,10 +2,9 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 
 // Ensure DB schema is initialized on boot
-require("./src/db");
+const { DB_PATH } = require("./src/db");
 
 const authRoutes = require("./src/routes/auth");
 const tripsRoutes = require("./src/routes/trips");
@@ -78,7 +77,11 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || "Internal server error" });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[server] Traffstant pre-trip API on port ${PORT}`);
-  console.log(`[server] DB: ${path.join(__dirname, "data", "traffstant.db")}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[server] Traffstant pre-trip API on port ${PORT}`);
+    console.log(`[server] DB: ${DB_PATH}`);
+  });
+}
+
+module.exports = app;
