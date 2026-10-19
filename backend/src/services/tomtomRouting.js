@@ -59,8 +59,39 @@ function scoreRoute(routeInfo) {
   );
 }
 
+const ROUTE_GREEN = "#22C55E";
+const ROUTE_YELLOW = "#F59E0B";
+const ROUTE_RED = "#EF4444";
+
+function trafficBurden(route) {
+  const level =
+    route.trafficLevel === "high" ? 2 : route.trafficLevel === "medium" ? 1 : 0;
+  const delay = Number(route.trafficDelay) || 0;
+  const travel = Number(route.travelTime) || 0;
+  return level * 10000 + delay * 100 + travel;
+}
+
+function colorsByTraffic(routes) {
+  const colors = routes.map(() => ROUTE_YELLOW);
+  if (routes.length === 0) return colors;
+
+  const order = routes
+    .map((route, index) => ({
+      index,
+      burden: trafficBurden(route),
+      travel: Number(route.travelTime) || 0,
+    }))
+    .sort((a, b) => a.burden - b.burden || a.travel - b.travel);
+
+  colors[order[0].index] = ROUTE_GREEN;
+  if (order.length > 1) colors[order[order.length - 1].index] = ROUTE_RED;
+  return colors;
+}
+
 function labelAndColorRoutes(routes) {
   if (routes.length === 0) return [];
+
+  const trafficColors = colorsByTraffic(routes);
 
   const recommendedIdx = routes.reduce(
     (best, r, i) => (scoreRoute(r) < scoreRoute(routes[best]) ? i : best),
@@ -83,19 +114,16 @@ function labelAndColorRoutes(routes) {
 
   return routes.map((r, i) => {
     let label = "Alternative";
-    let color = "#94a3b8";
+    const color = trafficColors[i];
 
     if (i === recommendedIdx && !assignedLabels.has("recommended")) {
       label = "Recommended";
-      color = "#0D9488";
       assignedLabels.add("recommended");
     } else if (i === leastTrafficIdx && !assignedLabels.has("leastTraffic")) {
       label = "Least Traffic";
-      color = "#22c55e";
       assignedLabels.add("leastTraffic");
     } else if (i === shortestIdx && !assignedLabels.has("shortest")) {
       label = "Shortest";
-      color = "#94a3b8";
       assignedLabels.add("shortest");
     }
 

@@ -87,6 +87,18 @@ describe("labelAndColorRoutes", () => {
     expect(labeled[2].label).toBe("Alternative");
   });
 
+  test("colors the most congested route red, the middle yellow, and the fastest clear route green", () => {
+    const routes = [
+      { travelTime: 30, trafficDelay: 5, trafficLevel: "medium", distance: "10.0" },
+      { travelTime: 20, trafficDelay: 0, trafficLevel: "low", distance: "12.0" },
+      { travelTime: 40, trafficDelay: 10, trafficLevel: "high", distance: "9.0" },
+    ];
+    const labeled = labelAndColorRoutes(routes);
+    expect(labeled[1].color).toBe("#22C55E");
+    expect(labeled[0].color).toBe("#F59E0B");
+    expect(labeled[2].color).toBe("#EF4444");
+  });
+
   test("gives every route a unique id derived from its index and label", () => {
     const routes = [
       { travelTime: 20, trafficDelay: 0, trafficLevel: "low", distance: "5.0" },

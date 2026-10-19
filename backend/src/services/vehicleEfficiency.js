@@ -1,8 +1,32 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 45000;
 const MIN_KM_PER_L = 3;
 const MAX_KM_PER_L = 35;
+
+// Typical combined km/L for the cars in the planner list. The efficiency model
+// often takes longer than the request timeout, so these cars are answered here.
+const CATALOG_KM_PER_L = {
+  "toyota|corolla": 16.5,
+  "toyota|camry": 13.5,
+  "toyota|yaris": 18,
+  "toyota|hilux": 11,
+  "toyota|land cruiser": 8,
+  "hyundai|accent": 16,
+  "hyundai|elantra": 15,
+  "hyundai|sonata": 13,
+  "hyundai|tucson": 12,
+  "chevrolet|tahoe": 7.5,
+  "chevrolet|captiva": 11,
+  "chevrolet|malibu": 13,
+  "nissan|sunny": 17,
+  "nissan|altima": 13,
+  "nissan|patrol": 7.5,
+  "kia|pegas": 17,
+  "kia|k5": 13.5,
+  "kia|sportage": 12,
+};
+
 const efficiencyCache = new Map();
 const CACHE_LIMIT = 100;
 
@@ -114,6 +138,21 @@ function normalizeVehicle(input) {
 
 function vehicleCacheKey(vehicle) {
   return JSON.stringify(vehicle);
+}
+
+function catalogEfficiency(vehicle) {
+  if (vehicle.modified || vehicle.fuelType === "diesel") return null;
+  const key = `${vehicle.manufacturer}|${vehicle.model}`.toLowerCase();
+  const kmPerLiter = CATALOG_KM_PER_L[key];
+  if (!kmPerLiter) return null;
+  return {
+    status: "ok",
+    kmPerLiter,
+    basis: "approximation",
+    explanation:
+      "تقدير تقريبي للكفاءة المجمّعة لهذا الطراز. الاستهلاك الفعلي يختلف حسب السنة والازدحام وأسلوب القيادة.",
+    confidence: "low",
+  };
 }
 
 function buildEfficiencyPrompt(vehicle) {
@@ -286,7 +325,11 @@ function createGeminiGenerator() {
     model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
     generationConfig: {
       temperature: 0.2,
+      maxOutputTokens: 200,
       responseMimeType: "application/json",
+      // Default thinking on this model takes about a minute and trips the
+      // request timeout. LOW is the fastest level this model accepts.
+      thinkingConfig: { thinkingLevel: "LOW" },
     },
   });
   return async function generate(prompt) {
@@ -317,6 +360,15 @@ async function estimateVehicleEfficiency(input, options = {}) {
   const key = vehicleCacheKey(vehicle);
   if (!options.bypassCache && efficiencyCache.has(key)) {
     return { ...efficiencyCache.get(key), cached: true, vehicle };
+  }
+
+  if (!options.generate) {
+    const known = catalogEfficiency(vehicle);
+    if (known) {
+      const result = { ...known, cached: false, vehicle };
+      remember(key, result);
+      return result;
+    }
   }
 
   const generate = options.generate || createGeminiGenerator();

@@ -162,15 +162,27 @@ describe("buildFuelEstimate", () => {
     ).rejects.toThrow(/distance/i);
   });
 
-  test("fails open when the API key is missing", async () => {
+  test("fails open when the API key is missing for an unlisted vehicle", async () => {
     delete process.env.GEMINI_API_KEY;
     const result = await buildFuelEstimate({
-      vehicle: corolla,
+      vehicle: { ...corolla, manufacturer: "Unlisted", model: "Custom" },
       distanceKm: 20,
       fuelGrade: "91",
     });
     expect(result.status).toBe("unavailable");
     expect(result.fuel).toBeNull();
     expect(result.efficiency.explanation).toMatch(/GEMINI_API_KEY/);
+  });
+
+  test("prices a listed car without calling the model", async () => {
+    delete process.env.GEMINI_API_KEY;
+    const result = await buildFuelEstimate({
+      vehicle: corolla,
+      distanceKm: 16.5,
+      fuelGrade: "91",
+    });
+    expect(result.status).toBe("ok");
+    expect(result.efficiency.kmPerLiter).toBe(16.5);
+    expect(result.fuel.liters).toBe(1);
   });
 });

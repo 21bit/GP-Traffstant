@@ -64,6 +64,13 @@ describe("estimateVehicleEfficiency", () => {
     clearEfficiencyCache();
   });
 
+  test("uses a local figure for a listed car without calling the model", async () => {
+    const result = await estimateVehicleEfficiency(stock, { timeoutMs: 30 });
+    expect(result.status).toBe("ok");
+    expect(result.kmPerLiter).toBe(15);
+    expect(result.basis).toBe("approximation");
+  });
+
   test("reads a structured successful response", async () => {
     const result = await estimateVehicleEfficiency(stock, {
       generate: async () =>

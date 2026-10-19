@@ -656,9 +656,9 @@ const MapLegend = ({ hasMultipleRoutes }) => {
             {t("routes")}
           </div>
           {[
-            { color: "#3B82F6", labelKey: "recommended" },
-            { color: "#22C55E", labelKey: "leastTraffic" },
-            { color: "#94A3B8", labelKey: "shortest" },
+            { color: "#22C55E", labelKey: "fastestLeast" },
+            { color: "#F59E0B", labelKey: "lessTraffic" },
+            { color: "#EF4444", labelKey: "mostTraffic" },
           ].map(({ color, labelKey }) => (
             <div key={labelKey} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div style={{ width: 28, height: 4, background: color, borderRadius: 4, flexShrink: 0, boxShadow: `0 0 6px ${color}55` }} />

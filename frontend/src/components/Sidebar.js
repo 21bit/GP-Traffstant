@@ -899,12 +899,9 @@ const RouteOptionRow = ({ route, isActive, onSelect, closureAvoided = false }) =
   };
   const displayLabel = t(labelMeta.key);
 
-  const activeBgColor =
-    route.color === "#3B82F6"
-      ? "rgba(37, 99, 235, 0.15)"
-      : route.color === "#22C55E"
-      ? "rgba(34, 197, 94, 0.15)"
-      : "rgba(100, 116, 139, 0.15)";
+  const activeBgColor = route.color
+    ? `${route.color}26`
+    : "rgba(100, 116, 139, 0.15)";
 
   // Estimate ETA based on travel time
   const etaDate = new Date(Date.now() + (route.travelTime || 0) * 60 * 1000);

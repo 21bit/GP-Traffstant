@@ -63,7 +63,8 @@ const ROUTE_PALETTE = ["#3B82F6", "#22C55E", "#94A3B8"];
 // Night-mode active route uses Electric Cyan to pop against dark CartoDB tiles.
 const NIGHT_ACTIVE_ROUTE_COLOR = "#00f2ff";
 
-const getRouteColor = (routeIndex, isActive, theme) => {
+const getRouteColor = (route, routeIndex, isActive, theme) => {
+  if (route?.color) return route.color;
   if (isActive && theme === "night") return NIGHT_ACTIVE_ROUTE_COLOR;
   return ROUTE_PALETTE[routeIndex] ?? "#3B82F6";
 };
@@ -1002,7 +1003,7 @@ const MapContainer = ({
         // Mirrors Google Maps' driving framing where alternates disappear
         // the moment the driver actually starts moving.
         if (!isActive && isLiveTracking) return null;
-        const color = getRouteColor(index, isActive, mapTheme);
+        const color = getRouteColor(routeObj, index, isActive, mapTheme);
         return (
           <Polyline
             key={index}

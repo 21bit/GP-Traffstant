@@ -143,7 +143,7 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
       const res = await axios.post(
         `${API_BASE}/api/fuel-estimate`,
         { vehicle, distanceKm: distance, fuelGrade: form.fuelGrade },
-        { timeout: 20000 }
+        { timeout: 55000 }
       );
       const data = res.data || {};
       setEfficiency(data.efficiency || null);
