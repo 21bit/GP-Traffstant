@@ -79,7 +79,7 @@ export default function TripPlanner() {
     } catch (err) {
       setDecision(null);
       setDecisionError(
-        err.response?.data?.error || err.message || "Decision failed"
+        err.response?.data?.error || err.message || "تعذر الحصول على القرار"
       );
     } finally {
       setLoadingDecision(false);

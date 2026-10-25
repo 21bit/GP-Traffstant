@@ -105,7 +105,7 @@ const ForecastChart = ({ slots, t }) => {
     <svg
       width={W}
       height={H}
-      aria-label="Traffic forecast chart"
+      aria-label="رسم توقع الازدحام"
       style={{ overflow: "visible" }}
     >
       <defs>
@@ -314,7 +314,7 @@ const AnalyticsDashboard = ({ prediction, isRTL }) => {
         onClick={() => setCollapsed((c) => !c)}
         role="button"
         aria-expanded={!collapsed}
-        aria-label="Toggle analytics panel"
+        aria-label="إظهار أو إخفاء لوحة التحليلات"
         onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(37, 99, 235, 0.10)")}
         onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(2, 8, 20, 0.45)")}
       >

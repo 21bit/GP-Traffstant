@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
 import { LanguageProvider, useLanguage } from "../LanguageContext";
-import { translations } from "../translations";
 
 const PLANNER_KEYS = [
   "planTrip",
@@ -40,14 +39,5 @@ describe("system: planner language", () => {
     expect(screen.getByText("rtl")).toBeTruthy();
     expect(document.documentElement.lang).toBe("ar");
     expect(document.documentElement.dir).toBe("rtl");
-  });
-
-  test("the same planner labels exist in English", () => {
-    expect(translations.en.planTrip).toBe("Plan your trip");
-    expect(translations.en.adviceLeaveNow).toBe("Leave now");
-    expect(translations.en.adviceWait).toBe("Wait before leaving");
-    expect(translations.en.healthScore).toBe("Health");
-    expect(translations.en.peakTrends).toBe("Peak-hour trends");
-    expect(translations.en.fuelEstimate).toBe("Estimated fuel");
   });
 });

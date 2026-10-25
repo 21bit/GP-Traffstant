@@ -752,7 +752,7 @@ const LocateMeButton = ({ onClick, isLocating }) => {
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      aria-label="Locate me on map"
+      aria-label="حدّد موقعي على الخريطة"
       title="Locate Me"
       className="locate-me-btn"
       style={{

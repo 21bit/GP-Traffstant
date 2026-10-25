@@ -373,7 +373,7 @@ const NavigationControls = ({
                     e.currentTarget.style.background = START_PILL.background;
                     e.currentTarget.style.boxShadow = START_PILL.boxShadow;
                   }}
-                  aria-label="Start navigation"
+                  aria-label="بدء الملاحة"
                 >
                   <span style={{ fontSize: 22 }}>🧭</span>
                   انطلق
@@ -398,7 +398,7 @@ const NavigationControls = ({
                     e.currentTarget.style.borderColor =
                       "rgba(148,163,184,0.20)";
                   }}
-                  aria-label="Clear route"
+                  aria-label="مسح الطريق"
                 >
                   <span style={{ fontSize: 16 }}>✕</span>
                   إلغاء المسار
@@ -504,7 +504,7 @@ const NavigationControls = ({
                       e.currentTarget.style.boxShadow =
                         LIVE_TRACKING_PILL.boxShadow;
                     }}
-                    aria-label="Enable live GPS tracking"
+                    aria-label="تفعيل تتبع الموقع"
                   >
                     <span style={{ fontSize: 14 }}>🛰</span>
                     تفعيل التتبع الحي
@@ -554,7 +554,7 @@ const NavigationControls = ({
                   e.currentTarget.style.transform = "translateY(0) scale(1)";
                   e.currentTarget.style.boxShadow = EXIT_PILL.boxShadow;
                 }}
-                aria-label="Exit navigation"
+                aria-label="إنهاء الملاحة"
               >
                 <span style={{ fontSize: 20 }}>✕</span>
                 إنهاء الملاحة

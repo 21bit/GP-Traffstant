@@ -274,9 +274,6 @@ const SearchDropdownPortal = ({
             >
               استخدام موقعي الحالي
             </div>
-            <div style={{ fontSize: 10, color: "#475569", marginTop: 1 }}>
-              Use My Current Location
-            </div>
           </div>
         </div>
       )}
@@ -3687,8 +3684,8 @@ const Sidebar = ({
             <button
               type="button"
               onClick={handleSwapLocations}
-              aria-label={isRTL ? "تبديل البداية والوجهة" : "Swap start and destination"}
-              title={isRTL ? "تبديل البداية والوجهة" : "Swap"}
+              aria-label="تبديل البداية والوجهة"
+              title="تبديل البداية والوجهة"
               className="dest-swap-btn"
             >
               <svg
@@ -4018,7 +4015,7 @@ const Sidebar = ({
             <button
               onClick={onStartNavigation}
               className="mobile-cta-primary mobile-cta-start glow-cyan"
-              aria-label="Start navigation"
+              aria-label="بدء الملاحة"
               style={{
                 ...S.btnPrimary,
                 background: "linear-gradient(135deg, #047857, #10B981)",
@@ -4044,7 +4041,7 @@ const Sidebar = ({
             <button
               onClick={onExitNavigation}
               className="mobile-cta-primary mobile-cta-exit"
-              aria-label="Exit navigation"
+              aria-label="إنهاء الملاحة"
               style={{
                 ...S.btnPrimary,
                 background: "linear-gradient(135deg, #7F1D1D, #EF4444)",
