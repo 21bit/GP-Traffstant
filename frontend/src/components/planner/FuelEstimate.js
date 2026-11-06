@@ -26,6 +26,14 @@ function basisLabel(t, basis) {
   return t("efficiencyUnavailable");
 }
 
+function RequiredMark({ t, titleKey = "requiredForFuel" }) {
+  return (
+    <span className="planner-required" title={t(titleKey)} aria-label={t(titleKey)}>
+      {t("requiredMark")}
+    </span>
+  );
+}
+
 export default function FuelEstimate({ distanceKm, onEstimate }) {
   const { t } = useLanguage();
   const [form, setForm] = useState(EMPTY_FORM);
@@ -206,9 +214,11 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
         <>
           <label className="planner-field">
             {t("manufacturer")}
+            <RequiredMark t={t} />
             <select
               value={form.manufacturer}
               onChange={(e) => setField("manufacturer", e.target.value)}
+              required
             >
               <option value="">{t("selectManufacturer")}</option>
               {VEHICLE_CATALOG.map((item) => (
@@ -222,7 +232,12 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           {form.manufacturer && form.manufacturer !== OTHER_VEHICLE && (
             <label className="planner-field">
               {t("model")}
-              <select value={form.model} onChange={(e) => setField("model", e.target.value)}>
+              <RequiredMark t={t} />
+              <select
+                value={form.model}
+                onChange={(e) => setField("model", e.target.value)}
+                required
+              >
                 <option value="">{t("selectModel")}</option>
                 {models.map((model) => (
                   <option key={model} value={model}>
@@ -236,16 +251,20 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
             <>
               <label className="planner-field">
                 {t("manufacturer")}
+                <RequiredMark t={t} />
                 <input
                   value={form.otherManufacturer}
                   onChange={(e) => setField("otherManufacturer", e.target.value)}
+                  required
                 />
               </label>
               <label className="planner-field">
                 {t("model")}
+                <RequiredMark t={t} />
                 <input
                   value={form.otherModel}
                   onChange={(e) => setField("otherModel", e.target.value)}
+                  required
                 />
               </label>
               <label className="planner-field">
@@ -279,6 +298,7 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           <p className="planner-note">{t("modifiedHint")}</p>
           <label className="planner-field">
             {t("manufacturerOptional")}
+            <RequiredMark t={t} titleKey="requiredOneOf" />
             <input
               value={form.otherManufacturer}
               onChange={(e) => setField("otherManufacturer", e.target.value)}
@@ -286,6 +306,7 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           </label>
           <label className="planner-field">
             {t("modelOptional")}
+            <RequiredMark t={t} titleKey="requiredOneOf" />
             <input
               value={form.otherModel}
               onChange={(e) => setField("otherModel", e.target.value)}
@@ -301,6 +322,7 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           </label>
           <label className="planner-field">
             {t("engineOptional")}
+            <RequiredMark t={t} titleKey="requiredOneOf" />
             <input
               inputMode="decimal"
               value={form.engineDisplacementL}
@@ -321,14 +343,17 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           </label>
           <label className="planner-field">
             {t("modificationsOptional")}
+            <RequiredMark t={t} titleKey="requiredOneOf" />
             <textarea
               value={form.modifications}
               onChange={(e) => setField("modifications", e.target.value)}
               rows={2}
             />
+            <span className="planner-required-hint">{t("requiredOneOf")}</span>
           </label>
           <label className="planner-field">
             {t("fuelType")}
+            <RequiredMark t={t} />
             <select value={form.fuelType} onChange={(e) => setField("fuelType", e.target.value)}>
               <option value="gasoline">{t("fuelGasoline")}</option>
               <option value="diesel">{t("fuelDiesel")}</option>
@@ -341,6 +366,7 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
       {form.modified !== null && !diesel && (
         <label className="planner-field">
           {t("fuelGrade")}
+          <RequiredMark t={t} />
           <select
             value={form.fuelGrade}
             onChange={(e) => setField("fuelGrade", e.target.value)}

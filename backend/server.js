@@ -50,9 +50,9 @@ if (!process.env.TOMTOM_API_KEY) {
 if (!process.env.JWT_SECRET) {
   console.warn("[WARN] JWT_SECRET is not set. Using insecure development default.");
 }
-if (!process.env.GEMINI_API_KEY) {
+if (!process.env.GROQ_API_KEY) {
   console.warn(
-    "[WARN] GEMINI_API_KEY is not set. Vehicle efficiency estimates will be unavailable until it is configured."
+    "[WARN] GROQ_API_KEY is not set. Vehicle efficiency estimates will be unavailable until it is configured."
   );
 }
 

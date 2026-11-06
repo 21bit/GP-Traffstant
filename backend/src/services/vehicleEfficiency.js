@@ -1,8 +1,9 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 
 const DEFAULT_TIMEOUT_MS = 45000;
 const MIN_KM_PER_L = 3;
 const MAX_KM_PER_L = 35;
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
 
 // Typical combined km/L for the cars in the planner list. The efficiency model
 // often takes longer than the request timeout, so these cars are answered here.
@@ -294,7 +295,7 @@ function classifyProviderError(err) {
 function failureResult(status) {
   const explanations = {
     unavailable:
-      "مفتاح GEMINI_API_KEY غير موجود في ملف backend/.env. أضفه ثم أعد تشغيل الخادم.",
+      "مفتاح GROQ_API_KEY غير موجود في ملف backend/.env. أضفه ثم أعد تشغيل الخادم.",
     timeout: "انتهت مهلة خدمة تقدير الكفاءة. حاول مرة أخرى بعد قليل.",
     rate_limited: "خدمة تقدير الكفاءة مشغولة حالياً. حاول مرة أخرى بعد قليل.",
     provider_error: "تعذر الوصول إلى خدمة تقدير الكفاءة. لم يُحسب استهلاك الرحلة.",
@@ -317,24 +318,28 @@ function remember(key, value) {
   efficiencyCache.set(key, value);
 }
 
-function createGeminiGenerator() {
-  const apiKey = process.env.GEMINI_API_KEY;
+function createGroqGenerator() {
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
-    generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 200,
-      responseMimeType: "application/json",
-      // Default thinking on this model takes about a minute and trips the
-      // request timeout. LOW is the fastest level this model accepts.
-      thinkingConfig: { thinkingLevel: "LOW" },
-    },
-  });
+  const client = new Groq({ apiKey });
+  const model = process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL;
   return async function generate(prompt) {
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const completion = await client.chat.completions.create({
+      model,
+      temperature: 0.2,
+      // gpt-oss uses reasoning tokens before the JSON body; 300 is too low.
+      max_tokens: 1200,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You estimate vehicle fuel efficiency. Reply with JSON only matching the requested shape.",
+        },
+        { role: "user", content: prompt },
+      ],
+    });
+    return completion.choices?.[0]?.message?.content || "";
   };
 }
 
@@ -371,7 +376,7 @@ async function estimateVehicleEfficiency(input, options = {}) {
     }
   }
 
-  const generate = options.generate || createGeminiGenerator();
+  const generate = options.generate || createGroqGenerator();
   if (!generate) {
     return { ...failureResult("unavailable"), cached: false, vehicle };
   }

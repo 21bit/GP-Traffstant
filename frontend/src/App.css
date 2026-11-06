@@ -2158,6 +2158,19 @@ body,
   color: var(--sand-deep);
 }
 
+.planner-required {
+  color: #e8a598;
+  font-weight: 700;
+  margin-inline-start: 0.2em;
+}
+
+.planner-required-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: rgba(232, 165, 152, 0.9);
+}
+
 .planner-field input,
 .planner-field select,
 .planner-field textarea,

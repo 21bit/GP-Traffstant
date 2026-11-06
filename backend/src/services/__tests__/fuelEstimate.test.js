@@ -163,7 +163,7 @@ describe("buildFuelEstimate", () => {
   });
 
   test("fails open when the API key is missing for an unlisted vehicle", async () => {
-    delete process.env.GEMINI_API_KEY;
+    delete process.env.GROQ_API_KEY;
     const result = await buildFuelEstimate({
       vehicle: { ...corolla, manufacturer: "Unlisted", model: "Custom" },
       distanceKm: 20,
@@ -171,11 +171,11 @@ describe("buildFuelEstimate", () => {
     });
     expect(result.status).toBe("unavailable");
     expect(result.fuel).toBeNull();
-    expect(result.efficiency.explanation).toMatch(/GEMINI_API_KEY/);
+    expect(result.efficiency.explanation).toMatch(/GROQ_API_KEY/);
   });
 
   test("prices a listed car without calling the model", async () => {
-    delete process.env.GEMINI_API_KEY;
+    delete process.env.GROQ_API_KEY;
     const result = await buildFuelEstimate({
       vehicle: corolla,
       distanceKm: 16.5,
