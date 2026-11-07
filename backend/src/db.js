@@ -49,6 +49,26 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_trips_user_id ON trips(user_id);
+
+  CREATE TABLE IF NOT EXISTS vehicles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    modified INTEGER NOT NULL DEFAULT 0,
+    manufacturer TEXT,
+    model TEXT,
+    year INTEGER,
+    engine_displacement_l REAL,
+    fuel_type TEXT NOT NULL DEFAULT 'gasoline',
+    transmission TEXT,
+    forced_induction TEXT NOT NULL DEFAULT 'unknown',
+    modifications TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vehicles_user_id ON vehicles(user_id);
 `);
 
 function ensureColumn(table, name, definition) {

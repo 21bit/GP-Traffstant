@@ -1,10 +1,11 @@
 import React from "react";
 import { useLanguage } from "../../LanguageContext";
 
-function healthTone(score) {
-  if (score >= 75) return "good";
-  if (score >= 50) return "ok";
-  return "poor";
+function trafficLabel(t, level) {
+  if (level === "high") return t("high");
+  if (level === "medium") return t("medium");
+  if (level === "low") return t("low");
+  return t(level) || level || "";
 }
 
 export default function RouteHealthCard({
@@ -13,32 +14,44 @@ export default function RouteHealthCard({
   onSelectRoute,
 }) {
   const { t } = useLanguage();
-  if (!routes?.length) return null;
+  if (!routes?.length) {
+    return (
+      <section className="planner-section">
+        <h3>{t("routeOptions")}</h3>
+        <div className="planner-empty-card compact">
+          <p>{t("noRoutesAvailable")}</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="planner-section">
       <h3>{t("routeOptions")}</h3>
+      <p className="planner-muted planner-trends-hint">{t("routeOptionsHint")}</p>
       <div className="planner-route-list">
         {routes.map((route) => {
           const active = route.id === activeRouteId;
-          const tone = healthTone(route.routeHealthScore);
+          const recommended = Boolean(route.isRecommended);
           return (
             <button
               key={route.id}
               type="button"
-              className={`planner-route-card ${active ? "active" : ""}`}
+              className={`planner-route-card ${active ? "active" : ""} ${
+                recommended ? "recommended" : ""
+              }`}
               onClick={() => onSelectRoute(route.id)}
             >
               <div className="planner-route-top">
                 <span
                   className="planner-route-dot"
                   style={{ background: route.color }}
+                  aria-hidden="true"
                 />
                 <strong>{route.label}</strong>
-                <span className={`planner-health ${tone}`}>
-                  {route.routeHealthScore}
-                  <small>{t("healthScore")}</small>
-                </span>
+                {recommended && (
+                  <span className="planner-route-badge">{t("recommended")}</span>
+                )}
               </div>
               <div className="planner-route-meta">
                 <span>
@@ -47,7 +60,7 @@ export default function RouteHealthCard({
                 <span>
                   {route.distanceKm} {t("km")}
                 </span>
-                <span>{t(route.trafficLevel) || route.trafficLevel}</span>
+                <span>{trafficLabel(t, route.trafficLevel)}</span>
               </div>
             </button>
           );

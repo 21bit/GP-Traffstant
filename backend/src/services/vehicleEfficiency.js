@@ -86,6 +86,12 @@ function normalizeVehicle(input) {
     ? input.fuelType
     : "unknown";
 
+  const transmission = ["automatic", "manual", "cvt", "unknown", ""].includes(
+    input.transmission
+  )
+    ? input.transmission || ""
+    : cleanText(input.transmission, 40);
+
   let forcedInduction = "unknown";
   if (input.forcedInduction === true || input.forcedInduction === "turbo") {
     forcedInduction = "turbo";
@@ -132,6 +138,7 @@ function normalizeVehicle(input) {
     year,
     engineDisplacementL,
     fuelType,
+    transmission,
     forcedInduction,
     modifications,
   };
@@ -177,13 +184,17 @@ function buildEfficiencyPrompt(vehicle) {
     `Model: ${vehicle.model || "unknown"}`,
     `Year: ${vehicle.year || "unknown"}`,
     `Fuel type: ${vehicle.fuelType}`,
+    `Transmission: ${vehicle.transmission || "unknown"}`,
     `Engine displacement (L): ${
       vehicle.engineDisplacementL === null ? "unknown" : vehicle.engineDisplacementL
     }`,
     `Forced induction: ${vehicle.forcedInduction}`,
     `Modifications: ${vehicle.modifications || "none stated"}`,
+    vehicle.modified
+      ? "Treat modification details and engine specs as primary signals; do not ignore them."
+      : "",
   ];
-  return lines.join("\n");
+  return lines.filter(Boolean).join("\n");
 }
 
 function extractJson(text) {

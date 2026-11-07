@@ -1,24 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { API_BASE } from "../map/mapConfig";
+import { useAuth } from "../../AuthContext";
 import { useLanguage } from "../../LanguageContext";
-import { OTHER_VEHICLE, VEHICLE_CATALOG, modelYears } from "../../data/vehicles";
 import { calculateTripFuel } from "../../utils/fuelMath";
-
-const EMPTY_FORM = {
-  modified: null,
-  manufacturer: "",
-  model: "",
-  year: "",
-  otherManufacturer: "",
-  otherModel: "",
-  otherYear: "",
-  engineDisplacementL: "",
-  forcedInduction: "unknown",
-  modifications: "",
-  fuelType: "gasoline",
-  fuelGrade: "91",
-};
+import { toEstimatePayload, vehicleDisplayName } from "../../utils/vehicleStorage";
+import VehicleForm from "./VehicleForm";
+import VehicleManager from "./VehicleManager";
 
 function basisLabel(t, basis) {
   if (basis === "published_specification") return t("efficiencyPublished");
@@ -26,22 +14,37 @@ function basisLabel(t, basis) {
   return t("efficiencyUnavailable");
 }
 
-function RequiredMark({ t, titleKey = "requiredForFuel" }) {
-  return (
-    <span className="planner-required" title={t(titleKey)} aria-label={t(titleKey)}>
-      {t("requiredMark")}
-    </span>
-  );
-}
-
-export default function FuelEstimate({ distanceKm, onEstimate }) {
+export default function FuelEstimate({
+  distanceKm,
+  onEstimate,
+  vehiclesApi,
+  onRequestAuth,
+}) {
+  const { user } = useAuth();
   const { t } = useLanguage();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const {
+    vehicles,
+    selectedVehicle,
+    selectedId,
+    selectVehicle,
+    saveVehicle,
+    removeVehicle,
+    makeDefault,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+    canPersist,
+  } = vehiclesApi;
+
+  const [guestVehicle, setGuestVehicle] = useState(null);
+  const [fuelGrade, setFuelGrade] = useState("91");
   const [prices, setPrices] = useState(null);
   const [efficiency, setEfficiency] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const years = useMemo(() => modelYears(), []);
+
+  const onGuestVehicleChange = useCallback((payload) => {
+    setGuestVehicle(payload);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,52 +61,35 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
     };
   }, []);
 
-  const usingOther = form.modified === true || form.manufacturer === OTHER_VEHICLE;
-  const selectedManufacturer = usingOther
-    ? form.otherManufacturer.trim()
-    : form.manufacturer;
-  const selectedModel = usingOther ? form.otherModel.trim() : form.model;
-  const selectedYear = usingOther ? form.otherYear : form.year;
-  const models =
-    VEHICLE_CATALOG.find((item) => item.manufacturer === form.manufacturer)?.models || [];
-
-  const vehicle = useMemo(() => {
-    if (form.modified === null) return null;
-    const payload = {
-      modified: form.modified,
-      manufacturer: selectedManufacturer,
-      model: selectedModel,
-      year: selectedYear || null,
-      fuelType: form.modified ? form.fuelType : "gasoline",
-      engineDisplacementL: form.engineDisplacementL || null,
-      forcedInduction: form.modified ? form.forcedInduction : "none",
-      modifications: form.modified ? form.modifications.trim() : "",
-    };
-    if (!form.modified) {
-      return payload.manufacturer && payload.model ? payload : null;
-    }
-    const hasIdentity = payload.manufacturer && payload.model;
-    const hasEngine = payload.engineDisplacementL !== null && payload.engineDisplacementL !== "";
-    const hasNotes = payload.modifications.length >= 3;
-    if ((payload.manufacturer && !payload.model) || (!payload.manufacturer && payload.model)) {
-      return null;
-    }
-    return hasIdentity || hasEngine || hasNotes ? payload : null;
-  }, [form, selectedManufacturer, selectedModel, selectedYear]);
-
-  const vehicleKey = JSON.stringify(vehicle);
   useEffect(() => {
     setEfficiency(null);
     setError("");
-  }, [vehicleKey]);
+  }, [selectedId, guestVehicle, user]);
 
-  const pricePerLiter = prices?.grades?.[form.fuelGrade]?.pricePerLiterSar;
-  const diesel = form.modified && form.fuelType === "diesel";
+  const vehicle = user
+    ? toEstimatePayload(selectedVehicle)
+    : guestVehicle
+      ? {
+          modified: Boolean(guestVehicle.modified),
+          manufacturer: guestVehicle.manufacturer || "",
+          model: guestVehicle.model || "",
+          year: guestVehicle.year || null,
+          engineDisplacementL: guestVehicle.engineDisplacementL ?? null,
+          fuelType: guestVehicle.fuelType || "gasoline",
+          transmission: "",
+          forcedInduction: guestVehicle.forcedInduction || "unknown",
+          modifications: guestVehicle.modifications || "",
+        }
+      : null;
+
+  const diesel = vehicle?.fuelType === "diesel";
   const distance = Number(distanceKm);
+  const pricePerLiter = prices?.grades?.[fuelGrade]?.pricePerLiterSar;
   const localFuel =
     efficiency?.kmPerLiter && !diesel
       ? calculateTripFuel(distance, efficiency.kmPerLiter, pricePerLiter)
       : null;
+  const readyForEstimate = Boolean(vehicle) && distance > 0;
 
   useEffect(() => {
     if (!onEstimate) return;
@@ -118,27 +104,16 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
             liters: fuel.liters,
             costSar: fuel.costSar,
             kmPerLiter: efficiency.kmPerLiter,
-            fuelGrade: form.fuelGrade,
+            fuelGrade,
             pricePerLiterSar: pricePerLiter,
           }
         : null
     );
-  }, [distance, efficiency, diesel, pricePerLiter, form.fuelGrade, onEstimate]);
-
-  const setField = (key, value) => {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      if (key === "manufacturer") next.model = "";
-      if (key === "modified") {
-        return { ...EMPTY_FORM, modified: value, fuelGrade: prev.fuelGrade };
-      }
-      return next;
-    });
-  };
+  }, [distance, efficiency, diesel, pricePerLiter, fuelGrade, onEstimate]);
 
   const estimate = async () => {
     if (!vehicle) {
-      setError(t("vehicleIncomplete"));
+      setError(user ? t("selectVehicleFirst") : t("vehicleIncomplete"));
       return;
     }
     if (!(distance > 0)) {
@@ -150,11 +125,18 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
     try {
       const res = await axios.post(
         `${API_BASE}/api/fuel-estimate`,
-        { vehicle, distanceKm: distance, fuelGrade: form.fuelGrade },
+        { vehicle, distanceKm: distance, fuelGrade },
         { timeout: 55000 }
       );
       const data = res.data || {};
-      setEfficiency(data.efficiency || null);
+      const nextEfficiency = data.efficiency || null;
+      const km = Number(nextEfficiency?.kmPerLiter);
+      if (nextEfficiency?.kmPerLiter != null && (!Number.isFinite(km) || km <= 0)) {
+        setEfficiency(null);
+        setError(t("fuelUnavailable"));
+        return;
+      }
+      setEfficiency(nextEfficiency);
       if (data.price?.pricePerLiterSar) {
         setPrices((prev) => ({
           ...(prev || {}),
@@ -171,8 +153,8 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
           },
         }));
       }
-      if (!data.efficiency?.kmPerLiter) {
-        setError(data.efficiency?.explanation || t("fuelUnavailable"));
+      if (!nextEfficiency?.kmPerLiter) {
+        setError(nextEfficiency?.explanation || t("fuelUnavailable"));
       }
     } catch (err) {
       setEfficiency(null);
@@ -183,251 +165,139 @@ export default function FuelEstimate({ distanceKm, onEstimate }) {
   };
 
   return (
-    <section className="planner-section planner-fuel">
-      <h3>{t("fuelEstimate")}</h3>
-      <p className="planner-note">{t("fuelDisclaimer")}</p>
-      <p className="planner-muted">
-        {distance > 0
-          ? t("routeDistanceLabel").replace("{km}", String(distance))
-          : t("fuelNeedRoute")}
-      </p>
-
-      <p className="planner-field-label">{t("vehicleQuestion")}</p>
-      <div className="planner-choice-row">
-        <button
-          type="button"
-          className={`planner-choice ${form.modified === false ? "active" : ""}`}
-          onClick={() => setField("modified", false)}
-        >
-          {t("vehicleStock")}
-        </button>
-        <button
-          type="button"
-          className={`planner-choice ${form.modified === true ? "active" : ""}`}
-          onClick={() => setField("modified", true)}
-        >
-          {t("vehicleModified")}
-        </button>
-      </div>
-
-      {form.modified === false && (
-        <>
-          <label className="planner-field">
-            {t("manufacturer")}
-            <RequiredMark t={t} />
-            <select
-              value={form.manufacturer}
-              onChange={(e) => setField("manufacturer", e.target.value)}
-              required
-            >
-              <option value="">{t("selectManufacturer")}</option>
-              {VEHICLE_CATALOG.map((item) => (
-                <option key={item.manufacturer} value={item.manufacturer}>
-                  {item.manufacturer}
-                </option>
-              ))}
-              <option value={OTHER_VEHICLE}>{t("other")}</option>
-            </select>
-          </label>
-          {form.manufacturer && form.manufacturer !== OTHER_VEHICLE && (
-            <label className="planner-field">
-              {t("model")}
-              <RequiredMark t={t} />
-              <select
-                value={form.model}
-                onChange={(e) => setField("model", e.target.value)}
-                required
-              >
-                <option value="">{t("selectModel")}</option>
-                {models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {form.manufacturer === OTHER_VEHICLE && (
-            <>
-              <label className="planner-field">
-                {t("manufacturer")}
-                <RequiredMark t={t} />
-                <input
-                  value={form.otherManufacturer}
-                  onChange={(e) => setField("otherManufacturer", e.target.value)}
-                  required
-                />
-              </label>
-              <label className="planner-field">
-                {t("model")}
-                <RequiredMark t={t} />
-                <input
-                  value={form.otherModel}
-                  onChange={(e) => setField("otherModel", e.target.value)}
-                  required
-                />
-              </label>
-              <label className="planner-field">
-                {t("yearOptional")}
-                <input
-                  inputMode="numeric"
-                  value={form.otherYear}
-                  onChange={(e) => setField("otherYear", e.target.value)}
-                />
-              </label>
-            </>
-          )}
-          {form.manufacturer && form.manufacturer !== OTHER_VEHICLE && (
-            <label className="planner-field">
-              {t("yearOptional")}
-              <select value={form.year} onChange={(e) => setField("year", e.target.value)}>
-                <option value="">{t("unspecified")}</option>
-                {years.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </>
+    <>
+      {user && (
+        <VehicleManager
+          vehicles={vehicles}
+          selectedId={selectedId}
+          onSelect={selectVehicle}
+          onSave={saveVehicle}
+          onDelete={removeVehicle}
+          onMakeDefault={makeDefault}
+          loading={vehiclesLoading}
+          error={vehiclesError}
+          canPersist={canPersist}
+          onRequestAuth={onRequestAuth}
+        />
       )}
 
-      {form.modified === true && (
-        <>
-          <p className="planner-note">{t("modifiedHint")}</p>
-          <label className="planner-field">
-            {t("manufacturerOptional")}
-            <RequiredMark t={t} titleKey="requiredOneOf" />
-            <input
-              value={form.otherManufacturer}
-              onChange={(e) => setField("otherManufacturer", e.target.value)}
-            />
-          </label>
-          <label className="planner-field">
-            {t("modelOptional")}
-            <RequiredMark t={t} titleKey="requiredOneOf" />
-            <input
-              value={form.otherModel}
-              onChange={(e) => setField("otherModel", e.target.value)}
-            />
-          </label>
-          <label className="planner-field">
-            {t("yearOptional")}
-            <input
-              inputMode="numeric"
-              value={form.otherYear}
-              onChange={(e) => setField("otherYear", e.target.value)}
-            />
-          </label>
-          <label className="planner-field">
-            {t("engineOptional")}
-            <RequiredMark t={t} titleKey="requiredOneOf" />
-            <input
-              inputMode="decimal"
-              value={form.engineDisplacementL}
-              onChange={(e) => setField("engineDisplacementL", e.target.value)}
-              placeholder="2.5"
-            />
-          </label>
-          <label className="planner-field">
-            {t("forcedInduction")}
-            <select
-              value={form.forcedInduction}
-              onChange={(e) => setField("forcedInduction", e.target.value)}
-            >
-              <option value="unknown">{t("inductionUnknown")}</option>
-              <option value="none">{t("inductionNone")}</option>
-              <option value="turbo">{t("inductionTurbo")}</option>
-            </select>
-          </label>
-          <label className="planner-field">
-            {t("modificationsOptional")}
-            <RequiredMark t={t} titleKey="requiredOneOf" />
-            <textarea
-              value={form.modifications}
-              onChange={(e) => setField("modifications", e.target.value)}
-              rows={2}
-            />
-            <span className="planner-required-hint">{t("requiredOneOf")}</span>
-          </label>
-          <label className="planner-field">
-            {t("fuelType")}
-            <RequiredMark t={t} />
-            <select value={form.fuelType} onChange={(e) => setField("fuelType", e.target.value)}>
-              <option value="gasoline">{t("fuelGasoline")}</option>
-              <option value="diesel">{t("fuelDiesel")}</option>
-              <option value="unknown">{t("fuelUnknown")}</option>
-            </select>
-          </label>
-        </>
-      )}
-
-      {form.modified !== null && !diesel && (
-        <label className="planner-field">
-          {t("fuelGrade")}
-          <RequiredMark t={t} />
-          <select
-            value={form.fuelGrade}
-            onChange={(e) => setField("fuelGrade", e.target.value)}
-          >
-            <option value="91">
-              {t("grade91")}
-              {prices?.grades?.["91"] ? ` — ${prices.grades["91"].pricePerLiterSar} ${t("sar")}` : ""}
-            </option>
-            <option value="95">
-              {t("grade95")}
-              {prices?.grades?.["95"] ? ` — ${prices.grades["95"].pricePerLiterSar} ${t("sar")}` : ""}
-            </option>
-          </select>
-        </label>
-      )}
-
-      {prices?.reviewedOn && form.modified !== null && !diesel && (
-        <p className="planner-note">
-          {t("priceSourceNote").replace("{date}", prices.reviewedOn)}
+      <section className="planner-section planner-fuel">
+        <h3>{t("fuelEstimate")}</h3>
+        <p className="planner-note">{t("fuelDisclaimer")}</p>
+        <p className="planner-muted">
+          {distance > 0
+            ? t("routeDistanceLabel").replace("{km}", String(distance))
+            : t("fuelNeedRoute")}
         </p>
-      )}
 
-      {form.modified !== null && (
-        <button
-          type="button"
-          className="planner-btn primary"
-          disabled={loading || !vehicle || !(distance > 0)}
-          onClick={estimate}
-        >
-          {loading ? t("estimatingFuel") : t("estimateFuelBtn")}
-        </button>
-      )}
-
-      {error && <div className="planner-error">{error}</div>}
-
-      {efficiency?.kmPerLiter && (
-        <>
-          <div className="planner-fuel-row">
-            <div>
-              <strong>{efficiency.kmPerLiter}</strong>
-              <span>{t("kmPerLiter")}</span>
+        {user ? (
+          selectedVehicle ? (
+            <div className="planner-selected-vehicle">
+              <span>{t("selectedVehicle")}</span>
+              <strong>{vehicleDisplayName(selectedVehicle)}</strong>
             </div>
-            <div>
-              <strong>{localFuel ? localFuel.liters : "—"}</strong>
-              <span>{t("liters")}</span>
-            </div>
-            {!diesel && (
-              <div>
-                <strong>{localFuel ? localFuel.costSar : "—"}</strong>
-                <span>{t("sar")}</span>
+          ) : (
+            !vehiclesLoading && (
+              <div className="planner-empty-card compact">
+                <p>{t("selectVehicleFirst")}</p>
               </div>
-            )}
-          </div>
+            )
+          )
+        ) : (
+          <>
+            <p className="planner-muted">{t("guestFuelHint")}</p>
+            <VehicleForm variant="estimate" onChange={onGuestVehicleChange} />
+            <div className="planner-empty-card compact planner-save-hint">
+              <p>{t("signInToSaveVehicles")}</p>
+              {onRequestAuth && (
+                <button
+                  type="button"
+                  className="planner-btn ghost compact"
+                  onClick={onRequestAuth}
+                >
+                  {t("login")}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {vehicle && !diesel && (
+          <label className="planner-field">
+            {t("fuelGrade")}
+            <select value={fuelGrade} onChange={(e) => setFuelGrade(e.target.value)}>
+              <option value="91">
+                {t("grade91")}
+                {prices?.grades?.["91"]
+                  ? ` — ${prices.grades["91"].pricePerLiterSar} ${t("sar")}`
+                  : ""}
+              </option>
+              <option value="95">
+                {t("grade95")}
+                {prices?.grades?.["95"]
+                  ? ` — ${prices.grades["95"].pricePerLiterSar} ${t("sar")}`
+                  : ""}
+              </option>
+            </select>
+          </label>
+        )}
+
+        {prices?.reviewedOn && vehicle && !diesel && (
           <p className="planner-note">
-            {basisLabel(t, efficiency.basis)}
-            {efficiency.confidence ? ` · ${t(`confidence_${efficiency.confidence}`)}` : ""}
+            {t("priceSourceNote").replace("{date}", prices.reviewedOn)}
           </p>
-          {efficiency.explanation && <p className="planner-muted">{efficiency.explanation}</p>}
-          {diesel && <p className="planner-note">{t("dieselCostUnavailable")}</p>}
-        </>
-      )}
-    </section>
+        )}
+
+        {vehicle && (
+          <button
+            type="button"
+            className="planner-btn primary"
+            disabled={loading || !readyForEstimate}
+            onClick={estimate}
+          >
+            {loading ? (
+              <span className="planner-btn-loading">
+                <span className="planner-spinner" aria-hidden="true" />
+                {t("estimatingFuel")}
+              </span>
+            ) : (
+              t("estimateFuelBtn")
+            )}
+          </button>
+        )}
+
+        {error && <div className="planner-error">{error}</div>}
+
+        {efficiency?.kmPerLiter && (
+          <div className="planner-fuel-results">
+            <div className="planner-fuel-row">
+              <div>
+                <strong>{efficiency.kmPerLiter}</strong>
+                <span>{t("kmPerLiter")}</span>
+              </div>
+              <div>
+                <strong>{localFuel ? localFuel.liters : "—"}</strong>
+                <span>{t("liters")}</span>
+              </div>
+              {!diesel && (
+                <div>
+                  <strong>{localFuel ? localFuel.costSar : "—"}</strong>
+                  <span>{t("sar")}</span>
+                </div>
+              )}
+            </div>
+            <p className="planner-note">
+              {basisLabel(t, efficiency.basis)}
+              {efficiency.confidence ? ` · ${t(`confidence_${efficiency.confidence}`)}` : ""}
+            </p>
+            {efficiency.explanation && (
+              <p className="planner-muted">{efficiency.explanation}</p>
+            )}
+            {diesel && <p className="planner-note">{t("dieselCostUnavailable")}</p>}
+            <p className="planner-estimate-badge">{t("estimateOnlyBadge")}</p>
+          </div>
+        )}
+      </section>
+    </>
   );
 }

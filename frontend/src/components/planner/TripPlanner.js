@@ -18,6 +18,7 @@ export default function TripPlanner() {
   const [loadingDecision, setLoadingDecision] = useState(false);
   const [decisionError, setDecisionError] = useState("");
   const [trafficPoints, setTrafficPoints] = useState([]);
+  const [locationNotice, setLocationNotice] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -34,22 +35,26 @@ export default function TripPlanner() {
     };
   }, []);
 
-  // Default origin to Riyadh center if GPS unavailable later — user can override
   useEffect(() => {
     if (origin) return;
     if (!navigator.geolocation) {
       setOrigin(RIYADH_CENTER);
-      setOriginLabel("الرياض");
+      setOriginLabel("وسط الرياض");
+      setLocationNotice("تعذر تحديد موقعك، استخدمنا وسط الرياض");
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setOrigin([pos.coords.latitude, pos.coords.longitude]);
         setOriginLabel("موقعي الحالي");
+        setLocationNotice("");
       },
-      () => {
+      (err) => {
         setOrigin(RIYADH_CENTER);
-        setOriginLabel("الرياض");
+        setOriginLabel("وسط الرياض");
+        if (err?.code === 1 || err?.code === 2 || err?.code === 3 || err) {
+          setLocationNotice("تعذر تحديد موقعك، استخدمنا وسط الرياض");
+        }
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -58,6 +63,8 @@ export default function TripPlanner() {
   const onPlanTrip = useCallback(async (start, end) => {
     if (!start || !end) return;
     setLoadingDecision(true);
+    setDecision(null);
+    setActiveRouteId(null);
     setDecisionError("");
     try {
       const res = await axios.post(
@@ -94,6 +101,12 @@ export default function TripPlanner() {
     setDecisionError("");
   };
 
+  const invalidateDecision = useCallback(() => {
+    setDecision(null);
+    setActiveRouteId(null);
+    setDecisionError("");
+  }, []);
+
   return (
     <div className="planner-shell">
       <div className="planner-map-plane">
@@ -122,6 +135,9 @@ export default function TripPlanner() {
         setActiveRouteId={setActiveRouteId}
         onPlanTrip={onPlanTrip}
         onClear={onClear}
+        onInvalidateDecision={invalidateDecision}
+        locationNotice={locationNotice}
+        setLocationNotice={setLocationNotice}
       />
     </div>
   );

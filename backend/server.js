@@ -11,6 +11,7 @@ const tripsRoutes = require("./src/routes/trips");
 const decisionRoutes = require("./src/routes/decision");
 const mapsRoutes = require("./src/routes/maps");
 const fuelRoutes = require("./src/routes/fuel");
+const vehiclesRoutes = require("./src/routes/vehicles");
 const { getProviderName } = require("./src/providers/predictionProvider");
 
 const app = express();
@@ -68,6 +69,7 @@ app.get("/ping", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripsRoutes);
+app.use("/api/vehicles", vehiclesRoutes);
 app.use("/api", decisionRoutes);
 app.use("/api", mapsRoutes);
 app.use("/api", fuelRoutes);

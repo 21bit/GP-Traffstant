@@ -3,13 +3,17 @@ import axios from "axios";
 import { API_BASE, RIYADH_CENTER } from "../map/mapConfig";
 import { useAuth } from "../../AuthContext";
 import { useLanguage } from "../../LanguageContext";
+import useVehicles from "../../hooks/useVehicles";
+import { pushRecentLocation, recentFromTrips } from "../../utils/recentLocations";
+import { canStartTrip, finishTrip, startTrip } from "../../utils/tripSession";
 import AuthModal from "./AuthModal";
+import DecisionLoading from "./DecisionLoading";
 import DepartureAdvice from "./DepartureAdvice";
 import DepartureTrends from "./DepartureTrends";
 import FuelEstimate from "./FuelEstimate";
+import PlaceSearchField from "./PlaceSearchField";
 import RouteHealthCard from "./RouteHealthCard";
 import TripHistory from "./TripHistory";
-import { canStartTrip, finishTrip, startTrip } from "../../utils/tripSession";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -29,14 +33,23 @@ export default function DecisionPanel({
   setActiveRouteId,
   onPlanTrip,
   onClear,
+  onInvalidateDecision,
+  locationNotice,
+  setLocationNotice,
 }) {
   const { user, logout, authFetch } = useAuth();
   const { t } = useLanguage();
+  const vehiclesApi = useVehicles();
   const [authOpen, setAuthOpen] = useState(false);
   const [originQuery, setOriginQuery] = useState("");
   const [destQuery, setDestQuery] = useState("");
   const [originSuggestions, setOriginSuggestions] = useState([]);
   const [destSuggestions, setDestSuggestions] = useState([]);
+  const [originSearching, setOriginSearching] = useState(false);
+  const [destSearching, setDestSearching] = useState(false);
+  const [originNoResults, setOriginNoResults] = useState(false);
+  const [destNoResults, setDestNoResults] = useState(false);
+  const [recentLocations, setRecentLocations] = useState([]);
   const [locating, setLocating] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [historyKey, setHistoryKey] = useState(0);
@@ -46,6 +59,7 @@ export default function DecisionPanel({
   const originTimer = useRef(null);
   const destTimer = useRef(null);
   const tripLock = useRef(false);
+  const planLock = useRef(false);
 
   const onFuelEstimate = useCallback((next) => {
     setVehicleFuel((prev) =>
@@ -80,14 +94,22 @@ export default function DecisionPanel({
     clearTimeout(originTimer.current);
     if (originQuery.trim().length < 2) {
       setOriginSuggestions([]);
+      setOriginNoResults(false);
+      setOriginSearching(false);
       return;
     }
+    setOriginSearching(true);
     originTimer.current = setTimeout(async () => {
       try {
         const results = await searchPlaces(originQuery, origin);
-        setOriginSuggestions(results.slice(0, 6));
+        const sliced = results.slice(0, 6);
+        setOriginSuggestions(sliced);
+        setOriginNoResults(sliced.length === 0);
       } catch (_err) {
         setOriginSuggestions([]);
+        setOriginNoResults(true);
+      } finally {
+        setOriginSearching(false);
       }
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(originTimer.current);
@@ -97,22 +119,62 @@ export default function DecisionPanel({
     clearTimeout(destTimer.current);
     if (destQuery.trim().length < 2) {
       setDestSuggestions([]);
+      setDestNoResults(false);
+      setDestSearching(false);
       return;
     }
+    setDestSearching(true);
     destTimer.current = setTimeout(async () => {
       try {
         const bias = origin || RIYADH_CENTER;
         const results = await searchPlaces(destQuery, bias);
-        setDestSuggestions(results.slice(0, 6));
+        const sliced = results.slice(0, 6);
+        setDestSuggestions(sliced);
+        setDestNoResults(sliced.length === 0);
       } catch (_err) {
         setDestSuggestions([]);
+        setDestNoResults(true);
+      } finally {
+        setDestSearching(false);
       }
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(destTimer.current);
   }, [destQuery, origin, searchPlaces]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    let cancelled = false;
+    authFetch("/api/trips")
+      .then((data) => {
+        if (cancelled) return;
+        setRecentLocations((prev) => {
+          const fromTrips = recentFromTrips(data.trips || []);
+          let merged = prev;
+          for (const place of fromTrips.slice().reverse()) {
+            merged = pushRecentLocation(merged, place);
+          }
+          return merged;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authFetch, historyKey]);
+
+  const rememberPlace = useCallback((place) => {
+    setRecentLocations((prev) => pushRecentLocation(prev, place));
+  }, []);
+
   const useMyLocation = () => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setOrigin(RIYADH_CENTER);
+      setOriginLabel(t("riyadhCenter"));
+      setOriginQuery("");
+      setOriginSuggestions([]);
+      if (setLocationNotice) setLocationNotice(t("gpsFallbackNotice"));
+      return;
+    }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -122,8 +184,19 @@ export default function DecisionPanel({
         setOriginQuery("");
         setOriginSuggestions([]);
         setLocating(false);
+        if (setLocationNotice) setLocationNotice("");
       },
-      () => setLocating(false),
+      (err) => {
+        setLocating(false);
+        const denied = err?.code === 1;
+        const unavailable = err?.code === 2;
+        const timeout = err?.code === 3;
+        if (denied || unavailable || timeout || err) {
+          setOrigin(RIYADH_CENTER);
+          setOriginLabel(t("riyadhCenter"));
+          if (setLocationNotice) setLocationNotice(t("gpsFallbackNotice"));
+        }
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
@@ -133,6 +206,9 @@ export default function DecisionPanel({
     setOriginLabel(place.name);
     setOriginQuery("");
     setOriginSuggestions([]);
+    setOriginNoResults(false);
+    rememberPlace(place);
+    if (setLocationNotice) setLocationNotice("");
   };
 
   const pickDest = (place) => {
@@ -140,6 +216,27 @@ export default function DecisionPanel({
     setDestLabel(place.name);
     setDestQuery("");
     setDestSuggestions([]);
+    setDestNoResults(false);
+    rememberPlace(place);
+  };
+
+  const swapOriginDestination = () => {
+    const nextOrigin = destination;
+    const nextDest = origin;
+    const nextOriginLabel = destLabel;
+    const nextDestLabel = originLabel;
+    setOrigin(nextOrigin);
+    setDestination(nextDest);
+    setOriginLabel(nextOriginLabel);
+    setDestLabel(nextDestLabel);
+    setOriginQuery("");
+    setDestQuery("");
+    setOriginSuggestions([]);
+    setDestSuggestions([]);
+    setOriginNoResults(false);
+    setDestNoResults(false);
+    if (setLocationNotice) setLocationNotice("");
+    if (onInvalidateDecision) onInvalidateDecision();
   };
 
   useEffect(() => {
@@ -319,8 +416,30 @@ export default function DecisionPanel({
     setDestination([trip.endLat, trip.endLng]);
     setOriginLabel(trip.originName || t("startPoint"));
     setDestLabel(trip.destName || t("destinationPoint"));
+    rememberPlace({
+      name: trip.originName || t("startPoint"),
+      lat: trip.startLat,
+      lng: trip.startLng,
+    });
+    rememberPlace({
+      name: trip.destName || t("destinationPoint"),
+      lat: trip.endLat,
+      lng: trip.endLng,
+    });
     onPlanTrip([trip.startLat, trip.startLng], [trip.endLat, trip.endLng]);
   };
+
+  const handlePlan = async () => {
+    if (planLock.current || loadingDecision || !origin || !destination) return;
+    planLock.current = true;
+    try {
+      await onPlanTrip(origin, destination);
+    } finally {
+      planLock.current = false;
+    }
+  };
+
+  const showInitialHint = !decision && !loadingDecision && !decisionError;
 
   return (
     <aside className="planner-panel">
@@ -352,67 +471,73 @@ export default function DecisionPanel({
       <section className="planner-section">
         <h3>{t("planTrip")}</h3>
 
-        <label className="planner-field">
-          {t("from")}
-          <div className="planner-input-row">
-            <input
-              value={originQuery}
-              onChange={(e) => setOriginQuery(e.target.value)}
-              placeholder={originLabel || t("fromPlaceholder")}
-            />
+        <PlaceSearchField
+          label={t("from")}
+          query={originQuery}
+          onQueryChange={setOriginQuery}
+          placeholder={originLabel || t("fromPlaceholder")}
+          selectedLabel={originLabel && !originQuery ? originLabel : ""}
+          suggestions={originSuggestions}
+          searching={originSearching}
+          noResults={originNoResults}
+          recentLocations={recentLocations}
+          onPick={pickOrigin}
+          listId="origin-suggestions"
+          trailing={
             <button type="button" className="planner-btn ghost" onClick={useMyLocation}>
               {locating ? t("locating") : t("gps")}
             </button>
-          </div>
-          {originSuggestions.length > 0 && (
-            <ul className="planner-suggestions">
-              {originSuggestions.map((place, idx) => (
-                <li key={`${place.lat}-${place.lng}-${idx}`}>
-                  <button type="button" onClick={() => pickOrigin(place)}>
-                    {place.name}
-                    {place.neighborhood ? ` · ${place.neighborhood}` : ""}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {originLabel && !originQuery && (
-            <div className="planner-selected">{originLabel}</div>
-          )}
-        </label>
+          }
+        />
 
-        <label className="planner-field">
-          {t("to")}
-          <input
-            value={destQuery}
-            onChange={(e) => setDestQuery(e.target.value)}
-            placeholder={destLabel || t("searchPlaceholder")}
-          />
-          {destSuggestions.length > 0 && (
-            <ul className="planner-suggestions">
-              {destSuggestions.map((place, idx) => (
-                <li key={`${place.lat}-${place.lng}-${idx}`}>
-                  <button type="button" onClick={() => pickDest(place)}>
-                    {place.name}
-                    {place.neighborhood ? ` · ${place.neighborhood}` : ""}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {destLabel && !destQuery && (
-            <div className="planner-selected">{destLabel}</div>
-          )}
-        </label>
+        <div className="planner-swap-row">
+          <button
+            type="button"
+            className="planner-swap-btn"
+            onClick={swapOriginDestination}
+            aria-label={t("swapLocations")}
+            title={t("swapLocations")}
+            disabled={!origin && !destination}
+          >
+            ⇅
+          </button>
+        </div>
+
+        <PlaceSearchField
+          label={t("to")}
+          query={destQuery}
+          onQueryChange={setDestQuery}
+          placeholder={destLabel || t("searchPlaceholder")}
+          selectedLabel={destLabel && !destQuery ? destLabel : ""}
+          suggestions={destSuggestions}
+          searching={destSearching}
+          noResults={destNoResults}
+          recentLocations={recentLocations}
+          onPick={pickDest}
+          listId="dest-suggestions"
+        />
+
+        {locationNotice && (
+          <div className="planner-gps-notice" role="status">
+            {locationNotice}
+          </div>
+        )}
 
         <div className="planner-actions">
           <button
             type="button"
             className="planner-btn primary"
             disabled={!origin || !destination || loadingDecision}
-            onClick={() => onPlanTrip(origin, destination)}
+            onClick={handlePlan}
           >
-            {loadingDecision ? t("calculating") : t("getDecision")}
+            {loadingDecision ? (
+              <span className="planner-btn-loading">
+                <span className="planner-spinner" aria-hidden="true" />
+                {t("calculating")}
+              </span>
+            ) : (
+              t("getDecision")
+            )}
           </button>
           <button
             type="button"
@@ -433,21 +558,36 @@ export default function DecisionPanel({
         {decisionError && <div className="planner-error">{decisionError}</div>}
       </section>
 
-      {decision && (
+      {showInitialHint && (
+        <div className="planner-hint-card">
+          <p>{t("initialEmptyHint")}</p>
+        </div>
+      )}
+
+      {loadingDecision && <DecisionLoading />}
+
+      {!loadingDecision && decision && (
         <>
           <DepartureAdvice
             recommendation={decision.recommendation}
             prediction={decision.prediction}
+            activeRoute={activeRoute}
+            departureComparison={decision.departureComparison}
+          />
+          <DepartureTrends
+            trends={decision.trends}
+            departureComparison={decision.departureComparison}
           />
           <RouteHealthCard
             routes={decision.routes}
             activeRouteId={activeRoute?.id}
             onSelectRoute={setActiveRouteId}
           />
-          <FuelEstimate distanceKm={activeRoute?.distanceKm} onEstimate={onFuelEstimate} />
-          <DepartureTrends
-            trends={decision.trends}
-            departureComparison={decision.departureComparison}
+          <FuelEstimate
+            distanceKm={activeRoute?.distanceKm}
+            onEstimate={onFuelEstimate}
+            vehiclesApi={vehiclesApi}
+            onRequestAuth={() => setAuthOpen(true)}
           />
           {tripSession?.status !== "active" && (
             <div className="planner-actions">

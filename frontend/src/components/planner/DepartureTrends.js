@@ -1,28 +1,40 @@
 import React from "react";
 import { useLanguage } from "../../LanguageContext";
 
-function barColor(level) {
-  if (level === "high") return "linear-gradient(180deg, #F97316, #C2410C)";
-  if (level === "medium") return "linear-gradient(180deg, #FBBF24, #D97706)";
-  return "linear-gradient(180deg, #5EEAD4, #0D9488)";
+function formatClock(iso) {
+  try {
+    return new Intl.DateTimeFormat("ar-SA", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(iso));
+  } catch (_err) {
+    return "";
+  }
+}
+
+function trafficLabel(t, level) {
+  if (level === "high") return t("high");
+  if (level === "medium") return t("medium");
+  if (level === "low") return t("low");
+  return "";
 }
 
 /**
- * Peak-hour trends: absolute congestion (0–100%) from TomTom slot ETAs,
- * with ETA labels so the chart is readable and comparable across slots.
+ * Simple departure-time comparison cards — no technical chart.
  */
 export default function DepartureTrends({ trends = [], departureComparison = [] }) {
   const { t } = useLanguage();
 
   const series =
-    trends.length > 0
-      ? trends
-      : departureComparison.map((d) => ({
-          offsetMinutes: d.offsetMinutes,
-          congestionScore: d.congestionScore ?? 0.5,
-          etaMinutes: d.etaMinutes,
-          level: d.level,
-          isBestDeparture: false,
+    departureComparison.length > 0
+      ? departureComparison
+      : trends.map((s) => ({
+          offsetMinutes: s.offsetMinutes,
+          etaMinutes: s.etaMinutes,
+          level: s.level,
+          departAt: null,
+          isBestDeparture: s.isBestDeparture,
         }));
 
   if (!series.length) return null;
@@ -33,76 +45,51 @@ export default function DepartureTrends({ trends = [], departureComparison = [] 
   const minEta = etaValues.length ? Math.min(...etaValues) : null;
   const bestOffset =
     series.find((s) => s.isBestDeparture)?.offsetMinutes ??
-    series.find((s) => s.etaMinutes === minEta)?.offsetMinutes;
+    series.find((s) => s.etaMinutes === minEta)?.offsetMinutes ??
+    0;
 
   return (
-    <section className="planner-section">
-      <h3>{t("peakTrends")}</h3>
-      <p className="planner-muted planner-trends-hint">{t("peakTrendsHint")}</p>
-      <div className="planner-trends" role="img" aria-label={t("peakTrends")}>
+    <section className="planner-section planner-departure-options">
+      <h3>{t("departureOptionsTitle")}</h3>
+      <p className="planner-muted planner-trends-hint">{t("departureOptionsHint")}</p>
+
+      <div className="planner-depart-cards" role="list">
         {series.map((slot) => {
-          const score = Math.min(1, Math.max(0, Number(slot.congestionScore) || 0));
-          // Absolute scale so flat mock hours don't all render as full-height bars
-          const heightPct = Math.round(score * 100);
           const isBest = slot.offsetMinutes === bestOffset;
-          const level =
-            slot.level ||
-            (score >= 0.68 ? "high" : score >= 0.36 ? "medium" : "low");
+          const label =
+            slot.offsetMinutes === 0
+              ? t("leaveNowShort")
+              : t("leaveIn").replace("{min}", String(slot.offsetMinutes));
+          const clock = slot.departAt ? formatClock(slot.departAt) : null;
+          const saved =
+            minEta != null && slot.etaMinutes != null
+              ? Math.max(0, slot.etaMinutes - minEta)
+              : 0;
 
           return (
             <div
               key={slot.offsetMinutes}
-              className={`planner-trend-col ${isBest ? "best" : ""}`}
-              title={`${Math.round(score * 100)}% · ${slot.etaMinutes ?? "—"} ${t("min")}`}
+              role="listitem"
+              className={`planner-depart-card ${isBest ? "best" : ""}`}
             >
-              <div className="planner-trend-eta">
+              <div className="planner-depart-card-top">
+                <strong>{label}</strong>
+                {isBest && <span className="planner-depart-best">{t("bestSlot")}</span>}
+              </div>
+              {clock && <div className="planner-depart-clock">{clock}</div>}
+              <div className="planner-depart-eta">
                 {slot.etaMinutes != null
-                  ? `${slot.etaMinutes}${t("minShort")}`
+                  ? `${slot.etaMinutes} ${t("min")}`
                   : "—"}
               </div>
-              <div className="planner-trend-bar-wrap">
-                <div
-                  className="planner-trend-bar"
-                  style={{
-                    height: `${Math.max(6, heightPct)}%`,
-                    background: barColor(level),
-                  }}
-                />
+              <div className="planner-depart-meta">
+                {trafficLabel(t, slot.level || slot.trafficLevel)}
+                {saved > 0 ? ` · +${saved} ${t("minShort")}` : ""}
               </div>
-              <span className="planner-trend-label">
-                {slot.offsetMinutes === 0
-                  ? t("now")
-                  : `+${slot.offsetMinutes}`}
-              </span>
-              <span className="planner-trend-pct">{Math.round(score * 100)}%</span>
-              {isBest && (
-                <span className="planner-trend-best">{t("bestSlot")}</span>
-              )}
             </div>
           );
         })}
       </div>
-      {departureComparison.length > 0 && (
-        <ul className="planner-departure-list">
-          {departureComparison.map((slot) => (
-            <li key={slot.offsetMinutes}>
-              <span>
-                {slot.offsetMinutes === 0
-                  ? t("leaveNowShort")
-                  : t("leaveIn").replace("{min}", String(slot.offsetMinutes))}
-              </span>
-              <span>
-                {slot.etaMinutes} {t("min")}
-                {slot.trafficDelayMinutes > 0
-                  ? ` · +${slot.trafficDelayMinutes} ${t("delay")}`
-                  : ""}
-                {" · "}
-                {t("healthScore")} {slot.routeHealthScore}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 }
