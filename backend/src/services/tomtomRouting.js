@@ -18,45 +18,110 @@ function haversineDistanceKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function normalizeRealRoute(routeData) {
-  const route = routeData.legs.flatMap((leg) =>
-    leg.points.map((p) => [p.latitude, p.longitude])
-  );
-  const summary = routeData.summary;
-  const distanceKm = (summary.lengthInMeters / 1000).toFixed(1);
-  const travelTimeMin = Math.ceil(summary.travelTimeInSeconds / 60);
-  const delayMin = Math.ceil((summary.trafficDelayInSeconds || 0) / 60);
-  const delayRatio =
-    (summary.trafficDelayInSeconds || 0) /
-    Math.max(summary.travelTimeInSeconds, 1);
+function isNonNegativeNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
 
-  let trafficLevel = "low";
-  if (delayRatio > 0.3) trafficLevel = "high";
-  else if (delayRatio > 0.1) trafficLevel = "medium";
+function toNonNegativeNumber(value) {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return isNonNegativeNumber(n) ? n : null;
+}
+
+/**
+ * TomTom summary.travelTimeInSeconds is traffic-aware when traffic=true.
+ * Prefer seconds for ranking precision; fall back to minute field.
+ */
+function getTravelTimeSeconds(route) {
+  const seconds = toNonNegativeNumber(route.travelTimeInSeconds);
+  if (seconds != null) return seconds;
+  const minutes = toNonNegativeNumber(route.travelTime);
+  return minutes == null ? null : minutes * 60;
+}
+
+/**
+ * Prefer lengthInMeters; fall back to distance (km string/number).
+ */
+function getLengthMeters(route) {
+  const meters = toNonNegativeNumber(route.lengthInMeters);
+  if (meters != null) return meters;
+  const km = toNonNegativeNumber(
+    typeof route.distance === "string" ? parseFloat(route.distance) : route.distance
+  );
+  return km == null ? null : km * 1000;
+}
+
+/**
+ * Congestion comparable for Least Traffic.
+ * TomTom Routing does not return a congestion-level enum; trafficDelayInSeconds
+ * is the verified delay field (traffic-aware travel time minus no-traffic time).
+ * Derived trafficLevel is only a fallback for fixtures that supply level without delay.
+ * Missing delay is never treated as zero congestion.
+ */
+function getCongestionComparable(route) {
+  const delaySeconds = toNonNegativeNumber(route.trafficDelayInSeconds);
+  if (delaySeconds != null) {
+    return { kind: "delaySeconds", value: delaySeconds };
+  }
+  const delayMinutes = toNonNegativeNumber(route.trafficDelay);
+  if (delayMinutes != null) {
+    return { kind: "delayMinutes", value: delayMinutes };
+  }
+  if (
+    route.trafficLevel === "low" ||
+    route.trafficLevel === "medium" ||
+    route.trafficLevel === "high"
+  ) {
+    const rank =
+      route.trafficLevel === "high" ? 2 : route.trafficLevel === "medium" ? 1 : 0;
+    return { kind: "level", value: rank };
+  }
+  return null;
+}
+
+function deriveTrafficLevel(delaySeconds, travelTimeSeconds) {
+  if (delaySeconds == null || travelTimeSeconds == null) return "unknown";
+  if (travelTimeSeconds <= 0) {
+    return delaySeconds > 0 ? "high" : "low";
+  }
+  const delayRatio = delaySeconds / travelTimeSeconds;
+  if (delayRatio > 0.3) return "high";
+  if (delayRatio > 0.1) return "medium";
+  return "low";
+}
+
+function normalizeRealRoute(routeData) {
+  const legs = Array.isArray(routeData?.legs) ? routeData.legs : [];
+  const route = legs.flatMap((leg) =>
+    (leg.points || []).map((p) => [p.latitude, p.longitude])
+  );
+  const summary = routeData?.summary || {};
+
+  const lengthInMeters = toNonNegativeNumber(summary.lengthInMeters);
+  const travelTimeInSeconds = toNonNegativeNumber(summary.travelTimeInSeconds);
+  const trafficDelayInSeconds = toNonNegativeNumber(summary.trafficDelayInSeconds);
+  const trafficLevel = deriveTrafficLevel(
+    trafficDelayInSeconds,
+    travelTimeInSeconds
+  );
 
   return {
     route,
     coordinates: route,
     trafficLevel,
-    distance: distanceKm,
-    travelTime: travelTimeMin,
-    trafficDelay: delayMin,
-    lengthInMeters: summary.lengthInMeters,
-    travelTimeInSeconds: summary.travelTimeInSeconds,
+    distance: lengthInMeters == null ? null : (lengthInMeters / 1000).toFixed(1),
+    travelTime:
+      travelTimeInSeconds == null ? null : Math.ceil(travelTimeInSeconds / 60),
+    trafficDelay:
+      trafficDelayInSeconds == null
+        ? null
+        : Math.ceil(trafficDelayInSeconds / 60),
+    lengthInMeters,
+    travelTimeInSeconds,
+    trafficDelayInSeconds,
+    trafficDataAvailable: trafficDelayInSeconds != null,
     source: "tomtom",
   };
-}
-
-function scoreRoute(routeInfo) {
-  const trafficPenalty =
-    routeInfo.trafficLevel === "high"
-      ? 30
-      : routeInfo.trafficLevel === "medium"
-      ? 10
-      : 0;
-  return (
-    routeInfo.travelTime + trafficPenalty + routeInfo.trafficDelay * 2
-  );
 }
 
 const ROUTE_GREEN = "#22C55E";
@@ -65,10 +130,23 @@ const ROUTE_RED = "#EF4444";
 
 function trafficBurden(route) {
   const level =
-    route.trafficLevel === "high" ? 2 : route.trafficLevel === "medium" ? 1 : 0;
-  const delay = Number(route.trafficDelay) || 0;
-  const travel = Number(route.travelTime) || 0;
-  return level * 10000 + delay * 100 + travel;
+    route.trafficLevel === "high"
+      ? 2
+      : route.trafficLevel === "medium"
+      ? 1
+      : route.trafficLevel === "low"
+      ? 0
+      : 1;
+  const delay =
+    toNonNegativeNumber(route.trafficDelayInSeconds) != null
+      ? toNonNegativeNumber(route.trafficDelayInSeconds) / 60
+      : toNonNegativeNumber(route.trafficDelay);
+  const travel = getTravelTimeSeconds(route);
+  return (
+    level * 10000 +
+    (delay == null ? 5000 : delay * 100) +
+    (travel == null ? 1e9 : travel)
+  );
 }
 
 function colorsByTraffic(routes) {
@@ -79,52 +157,136 @@ function colorsByTraffic(routes) {
     .map((route, index) => ({
       index,
       burden: trafficBurden(route),
-      travel: Number(route.travelTime) || 0,
+      travel: getTravelTimeSeconds(route) ?? Number.POSITIVE_INFINITY,
     }))
-    .sort((a, b) => a.burden - b.burden || a.travel - b.travel);
+    .sort((a, b) => a.burden - b.burden || a.travel - b.travel || a.index - b.index);
 
   colors[order[0].index] = ROUTE_GREEN;
   if (order.length > 1) colors[order[order.length - 1].index] = ROUTE_RED;
   return colors;
 }
 
+/**
+ * Recommended: lowest traffic-aware travel time (TomTom travelTimeInSeconds).
+ * Tie-break: shorter distance, then lower route index.
+ */
+function findRecommendedIndex(routes) {
+  let best = -1;
+  for (let i = 0; i < routes.length; i++) {
+    const travel = getTravelTimeSeconds(routes[i]);
+    if (travel == null) continue;
+    if (best < 0) {
+      best = i;
+      continue;
+    }
+    const bestTravel = getTravelTimeSeconds(routes[best]);
+    if (travel < bestTravel) {
+      best = i;
+      continue;
+    }
+    if (travel > bestTravel) continue;
+    const dist = getLengthMeters(routes[i]);
+    const bestDist = getLengthMeters(routes[best]);
+    if (dist != null && bestDist != null && dist < bestDist) best = i;
+    else if (dist != null && bestDist == null) best = i;
+  }
+  return best;
+}
+
+/**
+ * Least Traffic: lowest verified traffic delay when available.
+ * Fallback: derived/explicit trafficLevel only when delay is absent.
+ * Tie-break: lower traffic-aware travel time, then lower route index.
+ */
+function findLeastTrafficIndex(routes) {
+  let best = -1;
+  let bestMetric = null;
+  for (let i = 0; i < routes.length; i++) {
+    const metric = getCongestionComparable(routes[i]);
+    if (metric == null) continue;
+    if (best < 0) {
+      best = i;
+      bestMetric = metric;
+      continue;
+    }
+    if (metric.kind !== bestMetric.kind) {
+      // Prefer delay-based metrics over level-only fallbacks.
+      const rankKind = (kind) =>
+        kind === "delaySeconds" || kind === "delayMinutes" ? 0 : 1;
+      if (rankKind(metric.kind) < rankKind(bestMetric.kind)) {
+        best = i;
+        bestMetric = metric;
+        continue;
+      }
+      if (rankKind(metric.kind) > rankKind(bestMetric.kind)) continue;
+    }
+    if (metric.value < bestMetric.value) {
+      best = i;
+      bestMetric = metric;
+      continue;
+    }
+    if (metric.value > bestMetric.value) continue;
+    const travel = getTravelTimeSeconds(routes[i]);
+    const bestTravel = getTravelTimeSeconds(routes[best]);
+    if (travel != null && bestTravel != null && travel < bestTravel) {
+      best = i;
+      bestMetric = metric;
+    } else if (travel != null && bestTravel == null) {
+      best = i;
+      bestMetric = metric;
+    }
+  }
+  return best;
+}
+
+/**
+ * Shortest: lowest physical distance.
+ * Tie-break: lower traffic-aware travel time, then lower route index.
+ */
+function findShortestIndex(routes) {
+  let best = -1;
+  for (let i = 0; i < routes.length; i++) {
+    const dist = getLengthMeters(routes[i]);
+    if (dist == null) continue;
+    if (best < 0) {
+      best = i;
+      continue;
+    }
+    const bestDist = getLengthMeters(routes[best]);
+    if (dist < bestDist) {
+      best = i;
+      continue;
+    }
+    if (dist > bestDist) continue;
+    const travel = getTravelTimeSeconds(routes[i]);
+    const bestTravel = getTravelTimeSeconds(routes[best]);
+    if (travel != null && bestTravel != null && travel < bestTravel) best = i;
+    else if (travel != null && bestTravel == null) best = i;
+  }
+  return best;
+}
+
 function labelAndColorRoutes(routes) {
-  if (routes.length === 0) return [];
+  if (!Array.isArray(routes) || routes.length === 0) return [];
 
   const trafficColors = colorsByTraffic(routes);
+  const recommendedIdx = findRecommendedIndex(routes);
+  const leastTrafficIdx = findLeastTrafficIndex(routes);
+  const shortestIdx = findShortestIndex(routes);
 
-  const recommendedIdx = routes.reduce(
-    (best, r, i) => (scoreRoute(r) < scoreRoute(routes[best]) ? i : best),
-    0
-  );
-
-  const leastTrafficIdx = routes.reduce((best, r, i) => {
-    const rank = (level) =>
-      level === "high" ? 2 : level === "medium" ? 1 : 0;
-    return rank(r.trafficLevel) < rank(routes[best].trafficLevel) ? i : best;
-  }, 0);
-
-  const shortestIdx = routes.reduce(
-    (best, r, i) =>
-      parseFloat(r.distance) < parseFloat(routes[best].distance) ? i : best,
-    0
-  );
-
-  const assignedLabels = new Set();
-
+  // One category label per route. Category priority on a shared winner:
+  // Recommended > Least Traffic > Shortest. Categories that select an
+  // already-labeled route are omitted (no duplicate category display).
   return routes.map((r, i) => {
     let label = "Alternative";
     const color = trafficColors[i];
 
-    if (i === recommendedIdx && !assignedLabels.has("recommended")) {
+    if (i === recommendedIdx && recommendedIdx >= 0) {
       label = "Recommended";
-      assignedLabels.add("recommended");
-    } else if (i === leastTrafficIdx && !assignedLabels.has("leastTraffic")) {
+    } else if (i === leastTrafficIdx && leastTrafficIdx >= 0) {
       label = "Least Traffic";
-      assignedLabels.add("leastTraffic");
-    } else if (i === shortestIdx && !assignedLabels.has("shortest")) {
+    } else if (i === shortestIdx && shortestIdx >= 0) {
       label = "Shortest";
-      assignedLabels.add("shortest");
     }
 
     return {
@@ -132,7 +294,7 @@ function labelAndColorRoutes(routes) {
       id: `route-${i}-${label}`,
       label,
       color,
-      isRecommended: i === recommendedIdx,
+      isRecommended: recommendedIdx >= 0 && i === recommendedIdx,
     };
   });
 }
@@ -168,6 +330,8 @@ function buildSyntheticRoutes(fromLat, fromLng, toLat, toLng) {
       trafficDelay,
       lengthInMeters: Math.round(distanceVariant * 1000),
       travelTimeInSeconds: travelTime * 60,
+      trafficDelayInSeconds: trafficDelay * 60,
+      trafficDataAvailable: true,
       source: "synthetic",
     };
   });
@@ -346,4 +510,10 @@ module.exports = {
   labelAndColorRoutes,
   computeDensity,
   normalizeRealRoute,
+  getTravelTimeSeconds,
+  getLengthMeters,
+  getCongestionComparable,
+  findRecommendedIndex,
+  findLeastTrafficIndex,
+  findShortestIndex,
 };
